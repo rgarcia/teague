@@ -1,0 +1,20 @@
+{
+  "name": "cli",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@google-cloud/local-auth": "^3.0.1",
+    "gaxios": "^6.7.1",
+    "google-auth-library": "^9.15.1",
+    "googleapis": "^144.0.0"
+  }
+}

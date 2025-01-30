@@ -1,0 +1,7 @@
+---
+description: typescript conventions
+globs: *.ts
+---
+Whenever making code changes, always examine lint errors and attempt to fix them.
+
+If you are importing something just as a type, make sure to do a type import.
