@@ -1,5 +1,5 @@
 {
-  "name": "cli",
+  "name": "auth",
   "module": "index.ts",
   "type": "module",
   "scripts": {

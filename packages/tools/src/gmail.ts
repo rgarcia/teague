@@ -8,30 +8,49 @@ import type {
   ListToolsRequest,
   ListToolsResult,
   Resource,
+  TextContent,
   Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import {
   CallToolRequestSchema,
   ListResourcesRequestSchema,
   ListToolsRequestSchema,
+  ToolSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { createEnv } from "@t3-oss/env-core";
 import type { OAuth2Client } from "google-auth-library";
 import { gmail_v1, google } from "googleapis";
+import { loggerOptionsStderr } from "logger";
 import { existsSync, readFileSync } from "node:fs";
+import { pino, type Logger } from "pino";
 import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
-interface GmailMessage {
-  id: string;
-  subject: string;
-  sender: string;
-  timestamp: string;
+const ToolInputSchema = ToolSchema.shape.inputSchema;
+type ToolInput = z.infer<typeof ToolInputSchema>;
+
+enum ToolName {
+  SEARCH_EMAILS = "search_emails",
+  INBOX_STATS = "inbox_stats",
 }
+
+const SearchEmailsSchema = z.object({
+  query: z.string().describe("Search query string"),
+});
+
+const InboxStatsSchema = z.object({});
 
 export class GmailMCPServer extends Server {
   private gmail: gmail_v1.Gmail;
+  private log: Logger;
 
-  constructor({ TOKEN_JSON_PATH }: { TOKEN_JSON_PATH: string }) {
+  constructor({
+    TOKEN_JSON_PATH,
+    LOG_LEVEL,
+  }: {
+    TOKEN_JSON_PATH: string;
+    LOG_LEVEL: string;
+  }) {
     super(
       {
         name: "tools/gmail",
@@ -44,6 +63,11 @@ export class GmailMCPServer extends Server {
         },
       }
     );
+    this.log = pino({
+      ...loggerOptionsStderr, // use stderr since MCP server communicates over stdout if using stdio transport
+      name: "tools/gmail",
+      level: LOG_LEVEL,
+    });
     const content = readFileSync(TOKEN_JSON_PATH, "utf-8");
     const credentials = JSON.parse(content);
     const auth = google.auth.fromJSON(credentials) as OAuth2Client;
@@ -117,27 +141,14 @@ export class GmailMCPServer extends Server {
   ): Promise<ListToolsResult> {
     const tools: Tool[] = [
       {
-        name: "search_emails",
+        name: ToolName.SEARCH_EMAILS,
         description: "Search for emails in Gmail",
-        inputSchema: {
-          type: "object",
-          properties: {
-            query: {
-              type: "string",
-              description: "Search query string",
-            },
-          },
-          required: ["query"],
-        },
+        inputSchema: zodToJsonSchema(SearchEmailsSchema) as ToolInput,
       },
       {
-        name: "inbox_stats",
+        name: ToolName.INBOX_STATS,
         description: "Get total and unread email counts from Gmail inbox",
-        inputSchema: {
-          type: "object",
-          properties: {},
-          required: [],
-        },
+        inputSchema: zodToJsonSchema(InboxStatsSchema) as ToolInput,
       },
     ];
 
@@ -151,19 +162,11 @@ export class GmailMCPServer extends Server {
   ): Promise<CallToolResult> {
     try {
       switch (request.params.name) {
-        case "search_emails":
-          return {
-            content: [
-              {
-                type: "text",
-                text: await this.handleSearchEmails(
-                  request.params.arguments?.query as string
-                ),
-              },
-            ],
-            isError: false,
-          };
-        case "inbox_stats":
+        case ToolName.SEARCH_EMAILS:
+          const searchArgs = SearchEmailsSchema.parse(request.params.arguments);
+          return await this.handleSearchEmails(searchArgs.query);
+        case ToolName.INBOX_STATS:
+          InboxStatsSchema.parse(request.params.arguments);
           return {
             content: [
               {
@@ -190,7 +193,7 @@ export class GmailMCPServer extends Server {
     }
   }
 
-  private async handleSearchEmails(query: string): Promise<string> {
+  private async handleSearchEmails(query: string): Promise<CallToolResult> {
     const response = await this.gmail.users.messages.list({
       userId: "me",
       q: query,
@@ -198,7 +201,7 @@ export class GmailMCPServer extends Server {
     });
 
     const messages = response.data.messages || [];
-    const results: GmailMessage[] = [];
+    const content: TextContent[] = [];
 
     for (const message of messages) {
       const msg = await this.gmail.users.messages.get({
@@ -206,39 +209,40 @@ export class GmailMCPServer extends Server {
         id: message.id!,
         format: "full",
       });
-
+      this.log.debug(msg.data, "gmail.users.messages.get");
       const headers = msg.data.payload?.headers || [];
       const subject =
         headers.find((header) => header.name?.toLowerCase() === "subject")
           ?.value || "(no subject)";
-      const sender =
+      const from =
         headers.find((header) => header.name?.toLowerCase() === "from")
           ?.value || "(unknown sender)";
-
-      results.push({
-        id: message.id!,
-        subject,
-        sender,
-        timestamp: msg.data.internalDate || "",
+      content.push({
+        type: "text",
+        text: JSON.stringify({
+          from,
+          subject,
+          id: message.id,
+        }),
       });
     }
-
-    return `Found ${results.length} emails:\n${results
-      .map((msg) => `${msg.subject} (from: ${msg.sender})`)
-      .join("\n")}`;
+    return {
+      content,
+      isError: false,
+    };
   }
 
   private async handleInboxStats(): Promise<{ total: number; unread: number }> {
-    const totalResponse = await this.gmail.users.messages.list({
-      userId: "me",
-      q: "in:inbox",
-    });
-
-    const unreadResponse = await this.gmail.users.messages.list({
-      userId: "me",
-      q: "in:inbox is:unread",
-    });
-
+    const [totalResponse, unreadResponse] = await Promise.all([
+      this.gmail.users.messages.list({
+        userId: "me",
+        q: "in:inbox",
+      }),
+      this.gmail.users.messages.list({
+        userId: "me",
+        q: "in:inbox is:unread",
+      }),
+    ]);
     return {
       total: totalResponse.data.resultSizeEstimate || 0,
       unread: unreadResponse.data.resultSizeEstimate || 0,
@@ -253,6 +257,13 @@ export const requiredEnvVars = {
     refine: (path: string) => existsSync(path),
     message: "File does not exist",
   },
+  LOG_LEVEL: {
+    name: "LOG_LEVEL",
+    description: "The log level to use",
+    refine: (level: string) =>
+      ["fatal", "error", "warn", "info", "debug", "trace"].includes(level),
+    message: "Invalid log level",
+  },
 };
 
 export const main = async (
@@ -265,6 +276,12 @@ export const main = async (
         .describe(requiredEnvVars.TOKEN_JSON_PATH.description)
         .refine(requiredEnvVars.TOKEN_JSON_PATH.refine, {
           message: requiredEnvVars.TOKEN_JSON_PATH.message,
+        }),
+      LOG_LEVEL: z
+        .string()
+        .describe(requiredEnvVars.LOG_LEVEL.description)
+        .refine(requiredEnvVars.LOG_LEVEL.refine, {
+          message: requiredEnvVars.LOG_LEVEL.message,
         }),
     },
     runtimeEnv,
