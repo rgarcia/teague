@@ -5,7 +5,20 @@ import { gmail_v1, google } from "googleapis";
 import path from "path";
 
 // If modifying these scopes, delete token.json.
-const SCOPES: string[] = ["https://www.googleapis.com/auth/gmail.readonly"];
+const SCOPES: string[] = [
+  "https://mail.google.com/", // Read, compose, send, and permanently delete all your email from Gmail
+  "https://www.googleapis.com/auth/gmail.addons.current.action.compose", // Manage drafts and send emails when you interact with the add-on
+  "https://www.googleapis.com/auth/gmail.addons.current.message.action", // View your email messages when you interact with the add-on
+  "https://www.googleapis.com/auth/gmail.addons.current.message.readonly", // View your email messages when the add-on is running
+  "https://www.googleapis.com/auth/gmail.compose", // Manage drafts and send emails
+  "https://www.googleapis.com/auth/gmail.insert", // Add emails into your Gmail mailbox
+  "https://www.googleapis.com/auth/gmail.labels", // See and edit your email labels
+  "https://www.googleapis.com/auth/gmail.modify", // Read, compose, and send emails from your Gmail account
+  "https://www.googleapis.com/auth/gmail.readonly", // View your email messages and settings
+  "https://www.googleapis.com/auth/gmail.send", // Send email on your behalf
+  "https://www.googleapis.com/auth/gmail.settings.basic", // See, edit, create, or change your email settings and filters in Gmail
+  "https://www.googleapis.com/auth/gmail.settings.sharing", // Manage your sensitive mail settings, including who can manage your mail
+];
 const TOKEN_PATH = path.join(process.cwd(), "token.json");
 const CREDENTIALS_PATH = path.join(process.cwd(), "credentials.json");
 

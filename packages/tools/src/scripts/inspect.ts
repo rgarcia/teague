@@ -39,7 +39,7 @@ async function main() {
     fs.writeFileSync(envFilePath, envFileContent);
 
     console.log(
-      `Running 'bunx @modelcontextprotocol/inspector@0.3.0 bun run ${toolScriptPath}' with env: ${envFileContent.replace(
+      `Running 'bunx @modelcontextprotocol/inspector@latest bun run ${toolScriptPath}' with env: ${envFileContent.replace(
         /\n/g,
         ", "
       )}`
@@ -49,7 +49,7 @@ async function main() {
     const child = spawn(
       "bunx",
       [
-        "@modelcontextprotocol/inspector@0.3.0",
+        "@modelcontextprotocol/inspector@latest",
         "bun",
         "run",
         "--env-file",

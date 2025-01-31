@@ -12,8 +12,13 @@
   "dependencies": {
     "@ai-sdk/openai": "^1.1.5",
     "@modelcontextprotocol/sdk": "^1.4.1",
+    "@opentelemetry/auto-instrumentations-node": "^0.56.0",
+    "@opentelemetry/sdk-node": "^0.57.1",
     "ai": "^4.1.13",
     "json-schema": "^0.4.0",
+    "langfuse": "^3.34.0",
+    "langfuse-vercel": "^3.34.0",
+    "prompts": "^2.4.2",
     "zod": "^3.24.1"
   }
 }

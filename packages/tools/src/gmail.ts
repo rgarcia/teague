@@ -7,6 +7,8 @@ import type {
   ListResourcesResult,
   ListToolsRequest,
   ListToolsResult,
+  ReadResourceRequest,
+  ReadResourceResult,
   Resource,
   TextContent,
   Tool,
@@ -15,6 +17,7 @@ import {
   CallToolRequestSchema,
   ListResourcesRequestSchema,
   ListToolsRequestSchema,
+  ReadResourceRequestSchema,
   ToolSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { createEnv } from "@t3-oss/env-core";
@@ -32,13 +35,70 @@ type ToolInput = z.infer<typeof ToolInputSchema>;
 enum ToolName {
   SEARCH_EMAILS = "search_emails",
   INBOX_STATS = "inbox_stats",
+  ARCHIVE_EMAILS = "archive_emails",
 }
 
-const SearchEmailsSchema = z.object({
-  query: z.string().describe("Search query string"),
+const SearchEmailsRequestSchema = z.object({
+  query: z
+    .string()
+    .describe("Search query string")
+    .optional()
+    .default("in:inbox"),
+  maxResults: z
+    .number()
+    .describe("Maximum number of results to return")
+    .optional()
+    .default(10),
+  cursor: z
+    .string()
+    .describe(
+      "An opaque token returned by previous requests that exceeded the limit placed on the number of results returned. If provided in a request, the server will return results starting after this cursor."
+    )
+    .optional(),
 });
+type SearchEmailsRequest = z.infer<typeof SearchEmailsRequestSchema>;
 
-const InboxStatsSchema = z.object({});
+const ArchiveEmailsRequestSchema = z.object({
+  messageIds: z
+    .array(z.string())
+    .describe("The IDs of the messages to archive"),
+});
+type ArchiveEmailsRequest = z.infer<typeof ArchiveEmailsRequestSchema>;
+
+const InboxStatsRequestSchema = z.object({});
+
+const tools: Tool[] = [
+  {
+    name: ToolName.SEARCH_EMAILS,
+    description: "Search for emails in Gmail",
+    inputSchema: zodToJsonSchema(SearchEmailsRequestSchema) as ToolInput,
+  },
+  {
+    name: ToolName.INBOX_STATS,
+    description: "Get total and unread email counts from Gmail inbox",
+    inputSchema: zodToJsonSchema(InboxStatsRequestSchema) as ToolInput,
+  },
+  {
+    name: ToolName.ARCHIVE_EMAILS,
+    description: "Archive emails in Gmail",
+    inputSchema: zodToJsonSchema(ArchiveEmailsRequestSchema) as ToolInput,
+  },
+];
+
+const GMAIL_URI_PREFIX = "gmail:///messages/";
+
+class GmailMessageUri {
+  static fromId(id: string): string {
+    return `${GMAIL_URI_PREFIX}${id}`;
+  }
+
+  static toId(uri: string): string {
+    if (!uri.startsWith(GMAIL_URI_PREFIX)) {
+      throw new Error(`Invalid Gmail URI format: ${uri}`);
+    }
+    return uri.slice(GMAIL_URI_PREFIX.length);
+  }
+}
 
 export class GmailMCPServer extends Server {
   private gmail: gmail_v1.Gmail;
@@ -77,6 +137,10 @@ export class GmailMCPServer extends Server {
       ListResourcesRequestSchema,
       this.listResources.bind(this)
     );
+    this.setRequestHandler(
+      ReadResourceRequestSchema,
+      this.readResource.bind(this)
+    );
     this.setRequestHandler(ListToolsRequestSchema, this.listTools.bind(this));
     this.setRequestHandler(
       CallToolRequestSchema,
@@ -85,20 +149,15 @@ export class GmailMCPServer extends Server {
   }
 
   private async listResources(
-    request: ListResourcesRequest
+    req: ListResourcesRequest
   ): Promise<ListResourcesResult> {
     try {
-      const pageSize = 10;
       const params: gmail_v1.Params$Resource$Users$Messages$List = {
         userId: "me",
         q: "in:inbox",
-        maxResults: pageSize,
-        pageToken: request.params?.cursor,
+        maxResults: 10,
+        pageToken: req.params?.cursor,
       };
-
-      if (request.params?.cursor) {
-        params.pageToken = request.params.cursor;
-      }
 
       const response = await this.gmail.users.messages.list(params);
       const messages = response.data.messages || [];
@@ -118,10 +177,15 @@ export class GmailMCPServer extends Server {
         const sender =
           headers.find((header) => header.name?.toLowerCase() === "from")
             ?.value || "(unknown sender)";
+        const description = JSON.stringify({
+          snippet: msg.data.snippet,
+          labels: msg.data.labelIds || [],
+        });
 
         resources.push({
-          uri: `gmail:///${message.id}`,
+          uri: GmailMessageUri.fromId(message.id!),
           name: subject,
+          description,
           mimeType: "message/rfc822",
         });
       }
@@ -136,25 +200,57 @@ export class GmailMCPServer extends Server {
     }
   }
 
-  private async listTools(
-    _request: ListToolsRequest
-  ): Promise<ListToolsResult> {
-    const tools: Tool[] = [
-      {
-        name: ToolName.SEARCH_EMAILS,
-        description: "Search for emails in Gmail",
-        inputSchema: zodToJsonSchema(SearchEmailsSchema) as ToolInput,
-      },
-      {
-        name: ToolName.INBOX_STATS,
-        description: "Get total and unread email counts from Gmail inbox",
-        inputSchema: zodToJsonSchema(InboxStatsSchema) as ToolInput,
-      },
-    ];
+  private async readResource(
+    req: ReadResourceRequest
+  ): Promise<ReadResourceResult> {
+    try {
+      const params: gmail_v1.Params$Resource$Users$Messages$Get = {
+        userId: "me",
+        id: GmailMessageUri.toId(req.params?.uri),
+        format: "full", // https://developers.google.com/gmail/api/reference/rest/v1/Format
+      };
 
-    return {
-      tools,
-    };
+      let res = await this.gmail.users.messages.get(params);
+      if (res.status !== 200) {
+        throw new Error(
+          `Failed to read resource: ${res.status} ${res.statusText}`
+        );
+      }
+
+      // decode the base64 stuff if it's text or html
+      if (res.data.payload?.parts) {
+        res.data.payload.parts = res.data.payload.parts.map((part) => {
+          if (
+            part.body?.data &&
+            part.mimeType &&
+            ["text/plain", "text/html"].includes(part.mimeType)
+          ) {
+            const decoded = Buffer.from(part.body.data, "base64").toString(
+              "utf-8"
+            );
+            part.body.data = decoded;
+          }
+          return part;
+        });
+      }
+
+      return {
+        contents: [
+          {
+            type: "text",
+            uri: req.params.uri,
+            text: JSON.stringify(res),
+          },
+        ],
+      };
+    } catch (error) {
+      console.error("Error reading Gmail resource:", error);
+      throw error;
+    }
+  }
+
+  private async listTools(_: ListToolsRequest): Promise<ListToolsResult> {
+    return { tools };
   }
 
   private async handleToolCall(
@@ -163,19 +259,16 @@ export class GmailMCPServer extends Server {
     try {
       switch (request.params.name) {
         case ToolName.SEARCH_EMAILS:
-          const searchArgs = SearchEmailsSchema.parse(request.params.arguments);
-          return await this.handleSearchEmails(searchArgs.query);
+          const searchEmailsReq: SearchEmailsRequest =
+            SearchEmailsRequestSchema.parse(request.params.arguments);
+          return await this.handleSearchEmails(searchEmailsReq);
         case ToolName.INBOX_STATS:
-          InboxStatsSchema.parse(request.params.arguments);
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(await this.handleInboxStats()),
-              },
-            ],
-            isError: false,
-          };
+          InboxStatsRequestSchema.parse(request.params.arguments);
+          return await this.handleInboxStats();
+        case ToolName.ARCHIVE_EMAILS:
+          const archiveEmailsReq: ArchiveEmailsRequest =
+            ArchiveEmailsRequestSchema.parse(request.params.arguments);
+          return await this.handleArchiveEmails(archiveEmailsReq);
         default:
           throw new Error(`Tool not found: ${request.params.name}`);
       }
@@ -193,11 +286,14 @@ export class GmailMCPServer extends Server {
     }
   }
 
-  private async handleSearchEmails(query: string): Promise<CallToolResult> {
+  private async handleSearchEmails(
+    req: SearchEmailsRequest
+  ): Promise<CallToolResult> {
     const response = await this.gmail.users.messages.list({
       userId: "me",
-      q: query,
-      maxResults: 10,
+      q: req.query,
+      maxResults: req.maxResults,
+      pageToken: req.cursor,
     });
 
     const messages = response.data.messages || [];
@@ -209,7 +305,7 @@ export class GmailMCPServer extends Server {
         id: message.id!,
         format: "full",
       });
-      this.log.debug(msg.data, "gmail.users.messages.get");
+      //this.log.trace(msg.data, "gmail.users.messages.get");
       const headers = msg.data.payload?.headers || [];
       const subject =
         headers.find((header) => header.name?.toLowerCase() === "subject")
@@ -217,22 +313,44 @@ export class GmailMCPServer extends Server {
       const from =
         headers.find((header) => header.name?.toLowerCase() === "from")
           ?.value || "(unknown sender)";
+      const to =
+        headers.find((header) => header.name?.toLowerCase() === "to")?.value ||
+        undefined;
+      const cc =
+        headers.find((header) => header.name?.toLowerCase() === "cc")?.value ||
+        undefined;
+      const bcc =
+        headers.find((header) => header.name?.toLowerCase() === "bcc")?.value ||
+        undefined;
       content.push({
         type: "text",
         text: JSON.stringify({
-          from,
-          subject,
           id: message.id,
+          from,
+          to,
+          cc,
+          bcc,
+          subject,
+          labels: msg.data.labelIds,
+          snippet: msg.data.snippet,
         }),
       });
     }
+
+    if (response.data.nextPageToken) {
+      content.push({
+        type: "text",
+        text: JSON.stringify({ cursor: response.data.nextPageToken }),
+      });
+    }
+
     return {
       content,
       isError: false,
     };
   }
 
-  private async handleInboxStats(): Promise<{ total: number; unread: number }> {
+  private async handleInboxStats(): Promise<CallToolResult> {
     const [totalResponse, unreadResponse] = await Promise.all([
       this.gmail.users.messages.list({
         userId: "me",
@@ -243,10 +361,64 @@ export class GmailMCPServer extends Server {
         q: "in:inbox is:unread",
       }),
     ]);
-    return {
+
+    const stats = {
       total: totalResponse.data.resultSizeEstimate || 0,
       unread: unreadResponse.data.resultSizeEstimate || 0,
     };
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(stats),
+        },
+      ],
+      isError: false,
+    };
+  }
+
+  private async handleArchiveEmails(
+    req: ArchiveEmailsRequest
+  ): Promise<CallToolResult> {
+    try {
+      const res = await this.gmail.users.messages.batchModify({
+        userId: "me",
+        requestBody: {
+          ids: req.messageIds,
+          removeLabelIds: ["INBOX"],
+        },
+      });
+      if (res.status !== 204) {
+        throw new Error(
+          `Failed to archive emails: ${res.status} ${res.statusText}`
+        );
+      }
+      this.log.info(
+        {
+          ids: req.messageIds,
+          removeLabelIds: ["INBOX"],
+        },
+        "gmail.users.messages.batchModify"
+      );
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              success: true,
+              archivedCount: req.messageIds.length,
+              messageIds: req.messageIds,
+            }),
+          },
+        ],
+        isError: false,
+      };
+    } catch (error) {
+      this.log.error(error, "Failed to archive emails");
+      throw error;
+    }
   }
 }
 

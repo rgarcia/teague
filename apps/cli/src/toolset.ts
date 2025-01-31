@@ -1,6 +1,9 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { type Tool as MCPTool } from "@modelcontextprotocol/sdk/types.js";
+import {
+  type CallToolResult,
+  type Tool as MCPTool,
+} from "@modelcontextprotocol/sdk/types.js";
 import { jsonSchema, type Tool } from "ai";
 import type { JSONSchema7 } from "json-schema";
 
@@ -12,6 +15,10 @@ type MCPToolSetConfig = {
       env?: Record<string, string>;
     };
   };
+  /**
+   * whether to include an execute method on each tool. This essentially controls whether you want the AI SDK to execute tools or not.
+   */
+  noExecute?: boolean;
   /**
    * toolModifier is available to sanitize tool definitions (description and parameters) for models that don't support all JSONSchema7 features or that have other limits.
    */
@@ -26,6 +33,9 @@ type MCPToolSet = {
   tools: {
     [key: string]: Tool;
   };
+  executeTool: {
+    [key: string]: (args: any) => Promise<CallToolResult>;
+  };
   clients: {
     [key: string]: Client;
   };
@@ -36,6 +46,7 @@ export async function createToolSet(
 ): Promise<MCPToolSet> {
   let toolset: MCPToolSet = {
     tools: {},
+    executeTool: {},
     clients: {},
   };
 
@@ -68,20 +79,19 @@ export async function createToolSet(
       if (toolName !== serverName) {
         toolName = `${serverName}_${toolName}`;
       }
+      const executeTool = async (args: any): Promise<CallToolResult> => {
+        const result = await client.callTool({
+          name: tool.name,
+          arguments: args,
+        });
+        return result as CallToolResult;
+      };
       toolset.tools[toolName] = {
         description: tool.description || "",
         parameters: jsonSchema(tool.inputSchema as JSONSchema7),
-        execute: async (args: any) => {
-          const resultPromise = (async () => {
-            const result = await client.callTool({
-              name: tool.name,
-              arguments: args,
-            });
-            return JSON.stringify(result);
-          })();
-          return resultPromise;
-        },
+        execute: config.noExecute ? undefined : executeTool,
       };
+      toolset.executeTool[toolName] = executeTool;
     }
   }
 

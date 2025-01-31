@@ -23,12 +23,33 @@ An email thingy.
    bun run index.ts
    ```
 
-1. Once you have a `packages/auth/token.json` file you can chat with your email in Claude Desktop via
+## Ways to use it
 
-   ```zsh
-   cd packages/tools
-   bun install
-   bun run chat-with gmail
-   ```
+Once you have a `packages/auth/token.json` you have a few options:
 
-If you inspect the output of this command it will have a general command you can plug in to other MCP Clients, e.g. Cursor, if you want to chat with it elsewhere.
+1.  You can chat with the gmail MCP server in Claude Desktop via
+
+    ```zsh
+    cd packages/tools
+    bun install
+    bun run chat-with gmail
+    ```
+
+    If you inspect the output of this command it will have a general command you can plug in to other MCP Clients, e.g. Cursor, if you want to chat with it elsewhere.
+
+2.  You can inspect the gmail MCP server in the [MCP inspector](https://github.com/modelcontextprotocol/inspector), which is a visual testing tool for MCP servers:
+
+    ```zsh
+    cd packages/tools
+    bun install
+    bun run inspect gmail
+    ```
+
+3.  You can chat with it on the CLI. You will need to get Langfuse credentials to do this, as the system prompt is stored there.
+    Once you have those you can copy `packages/cli/.env.example` to `packages/cli/.env` and fill it out, and then run:
+
+    ```zsh
+    cd packages/cli
+    bun install
+    bun run --env-file .env src/index.ts
+    ```
