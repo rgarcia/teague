@@ -5,6 +5,7 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/uuid": "^10.0.0",
+    "@types/turndown": "^5.0.5",
     "@types/json-schema": "^7.0.15"
   },
   "peerDependencies": {
@@ -16,6 +17,7 @@
     "@opentelemetry/auto-instrumentations-node": "^0.56.0",
     "@opentelemetry/sdk-node": "^0.57.1",
     "@statelyai/agent": "2.0.0-next.4",
+    "address-rfc2822": "^2.2.3",
     "ai": "^4.1.13",
     "google-auth-library": "^9.15.1",
     "googleapis": "^144.0.0",
@@ -24,6 +26,7 @@
     "langfuse": "^3.34.0",
     "langfuse-vercel": "^3.34.0",
     "prompts": "^2.4.2",
+    "turndown": "^7.2.0",
     "uuid": "^11.0.5",
     "xstate": "^5.19.2",
     "zod": "^3.24.1"

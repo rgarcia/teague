@@ -4,7 +4,7 @@ globs: *.ts,*.tsx,package.json
 ---
 The project uses Bun as the runtime.
 
-If adding any npm packages, never edit the package.json directly. Use `bun install` instead of `npm install`. 
+If adding any npm packages, never edit the package.json directly. Use `bun install` instead of `npm install`.  If adding a @types/* package, make sure to use `bun install -D` to add it to dev dependencies.
 
 Be careful to run `bun install` in the correct directory so that you are adding the dependency to the correct sub package. We have packages in packages/* and source code is usually in packages/*/src/*.
 
