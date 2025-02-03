@@ -32,10 +32,11 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
 
-enum ToolName {
+export enum ToolName {
   SEARCH_EMAILS = "search_emails",
-  INBOX_STATS = "inbox_stats",
+  // INBOX_STATS = "inbox_stats",
   ARCHIVE_EMAILS = "archive_emails",
+  GET_EMAIL = "get_email",
 }
 
 const SearchEmailsRequestSchema = z.object({
@@ -67,21 +68,31 @@ type ArchiveEmailsRequest = z.infer<typeof ArchiveEmailsRequestSchema>;
 
 const InboxStatsRequestSchema = z.object({});
 
-const tools: Tool[] = [
+const GetEmailRequestSchema = z.object({
+  messageId: z.string().describe("The ID of the message to retrieve"),
+});
+type GetEmailRequest = z.infer<typeof GetEmailRequestSchema>;
+
+export const tools: Tool[] = [
   {
     name: ToolName.SEARCH_EMAILS,
     description: "Search for emails in Gmail",
     inputSchema: zodToJsonSchema(SearchEmailsRequestSchema) as ToolInput,
   },
-  {
-    name: ToolName.INBOX_STATS,
-    description: "Get total and unread email counts from Gmail inbox",
-    inputSchema: zodToJsonSchema(InboxStatsRequestSchema) as ToolInput,
-  },
+  // {
+  //   name: ToolName.INBOX_STATS,
+  //   description: "Get total and unread email counts from Gmail inbox",
+  //   inputSchema: zodToJsonSchema(InboxStatsRequestSchema) as ToolInput,
+  // },
   {
     name: ToolName.ARCHIVE_EMAILS,
     description: "Archive emails in Gmail",
     inputSchema: zodToJsonSchema(ArchiveEmailsRequestSchema) as ToolInput,
+  },
+  {
+    name: ToolName.GET_EMAIL,
+    description: "Get a specific email message by ID",
+    inputSchema: zodToJsonSchema(GetEmailRequestSchema) as ToolInput,
   },
 ];
 
@@ -262,13 +273,18 @@ export class GmailMCPServer extends Server {
           const searchEmailsReq: SearchEmailsRequest =
             SearchEmailsRequestSchema.parse(request.params.arguments);
           return await this.handleSearchEmails(searchEmailsReq);
-        case ToolName.INBOX_STATS:
-          InboxStatsRequestSchema.parse(request.params.arguments);
-          return await this.handleInboxStats();
+        // case ToolName.INBOX_STATS:
+        //   InboxStatsRequestSchema.parse(request.params.arguments);
+        //   return await this.handleInboxStats();
         case ToolName.ARCHIVE_EMAILS:
           const archiveEmailsReq: ArchiveEmailsRequest =
             ArchiveEmailsRequestSchema.parse(request.params.arguments);
           return await this.handleArchiveEmails(archiveEmailsReq);
+        case ToolName.GET_EMAIL:
+          const getEmailReq: GetEmailRequest = GetEmailRequestSchema.parse(
+            request.params.arguments
+          );
+          return await this.handleGetEmail(getEmailReq);
         default:
           throw new Error(`Tool not found: ${request.params.name}`);
       }
@@ -350,33 +366,33 @@ export class GmailMCPServer extends Server {
     };
   }
 
-  private async handleInboxStats(): Promise<CallToolResult> {
-    const [totalResponse, unreadResponse] = await Promise.all([
-      this.gmail.users.messages.list({
-        userId: "me",
-        q: "in:inbox",
-      }),
-      this.gmail.users.messages.list({
-        userId: "me",
-        q: "in:inbox is:unread",
-      }),
-    ]);
+  // private async handleInboxStats(): Promise<CallToolResult> {
+  //   const [totalResponse, unreadResponse] = await Promise.all([
+  //     this.gmail.users.messages.list({
+  //       userId: "me",
+  //       q: "in:inbox",
+  //     }),
+  //     this.gmail.users.messages.list({
+  //       userId: "me",
+  //       q: "in:inbox is:unread",
+  //     }),
+  //   ]);
 
-    const stats = {
-      total: totalResponse.data.resultSizeEstimate || 0,
-      unread: unreadResponse.data.resultSizeEstimate || 0,
-    };
+  //   const stats = {
+  //     total: totalResponse.data.resultSizeEstimate || 0,
+  //     unread: unreadResponse.data.resultSizeEstimate || 0,
+  //   };
 
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(stats),
-        },
-      ],
-      isError: false,
-    };
-  }
+  //   return {
+  //     content: [
+  //       {
+  //         type: "text",
+  //         text: JSON.stringify(stats),
+  //       },
+  //     ],
+  //     isError: false,
+  //   };
+  // }
 
   private async handleArchiveEmails(
     req: ArchiveEmailsRequest
@@ -417,6 +433,81 @@ export class GmailMCPServer extends Server {
       };
     } catch (error) {
       this.log.error(error, "Failed to archive emails");
+      throw error;
+    }
+  }
+
+  private async handleGetEmail(req: GetEmailRequest): Promise<CallToolResult> {
+    try {
+      const msg = await this.gmail.users.messages.get({
+        userId: "me",
+        id: req.messageId,
+        format: "full",
+      });
+
+      const headers = msg.data.payload?.headers || [];
+      const subject =
+        headers.find((header) => header.name?.toLowerCase() === "subject")
+          ?.value || "(no subject)";
+      const from =
+        headers.find((header) => header.name?.toLowerCase() === "from")
+          ?.value || "(unknown sender)";
+      const to =
+        headers.find((header) => header.name?.toLowerCase() === "to")?.value ||
+        undefined;
+      const cc =
+        headers.find((header) => header.name?.toLowerCase() === "cc")?.value ||
+        undefined;
+      const bcc =
+        headers.find((header) => header.name?.toLowerCase() === "bcc")?.value ||
+        undefined;
+
+      // Decode message parts if they exist
+      let parts = msg.data.payload?.parts;
+      if (parts) {
+        parts = parts.map((part) => {
+          if (
+            part.body?.data &&
+            part.mimeType &&
+            ["text/plain", "text/html"].includes(part.mimeType)
+          ) {
+            const decoded = Buffer.from(part.body.data, "base64").toString(
+              "utf-8"
+            );
+            part.body.data = decoded;
+          }
+          return part;
+        });
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              id: msg.data.id,
+              threadId: msg.data.threadId,
+              labelIds: msg.data.labelIds,
+              snippet: msg.data.snippet,
+              historyId: msg.data.historyId,
+              internalDate: msg.data.internalDate,
+              sizeEstimate: msg.data.sizeEstimate,
+              from,
+              to,
+              cc,
+              bcc,
+              subject,
+              payload: {
+                ...msg.data.payload,
+                parts,
+              },
+            }),
+          },
+        ],
+        isError: false,
+      };
+    } catch (error) {
+      this.log.error(error, "Failed to get email");
       throw error;
     }
   }

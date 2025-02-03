@@ -124,23 +124,47 @@ export function geminiToolModifier(
  * Modifies tool parameters to truncate descriptions to 1024 characters for OpenAI compatibility.
  * OpenAI has a limit on the length of descriptions in their function calling API.
  */
-export function oaiToolModifier(
-  serverName: string,
-  toolName: string,
-  tool: MCPTool
-): MCPTool {
-  if (tool.description?.length && tool.description.length > 1024) {
-    tool.description = tool.description.slice(0, 1024);
-  }
-  return tool;
+export function oaiToolModifier(modelId: string) {
+  return (serverName: string, toolName: string, tool: MCPTool): MCPTool => {
+    let modifiedTool = { ...tool };
+
+    // Apply description length limit
+    if (
+      modifiedTool.description?.length &&
+      modifiedTool.description.length > 1024
+    ) {
+      modifiedTool.description = modifiedTool.description.slice(0, 1024);
+    }
+
+    // For o3-mini and o1, remove default values from parameters (it doesn't support them). It also requires all parameters to be listed as required.
+    if (modelId.includes("o1") || modelId.includes("o3-mini")) {
+      if (modifiedTool.inputSchema.properties) {
+        // Make all properties required
+        modifiedTool.inputSchema.required = Object.keys(
+          modifiedTool.inputSchema.properties
+        );
+
+        // Remove default values
+        for (const [_, value] of Object.entries(
+          modifiedTool.inputSchema.properties
+        )) {
+          const v = value as any;
+          if (typeof v === "object" && "default" in v) {
+            delete v.default;
+          }
+        }
+      }
+    }
+
+    return modifiedTool;
+  };
 }
 
-export function defaultToolModifier(modelId: string) {
-  if (modelId.includes("gemini")) {
+export function defaultToolModifier(providerId: string, modelId: string) {
+  if (providerId === "gemini") {
     return geminiToolModifier;
-  }
-  if (modelId.includes("gpt")) {
-    return oaiToolModifier;
+  } else if (providerId === "openai.chat") {
+    return oaiToolModifier(modelId);
   }
   return undefined;
 }
