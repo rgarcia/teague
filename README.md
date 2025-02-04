@@ -45,11 +45,27 @@ Once you have a `packages/auth/token.json` you have a few options:
     bun run inspect gmail
     ```
 
-3.  You can chat with it on the CLI. You will need to get Langfuse credentials to do this, as the system prompt is stored there.
-    Once you have those you can copy `packages/cli/.env.example` to `packages/cli/.env` and fill it out, and then run:
+## Leveling up to a CLI app with voice
 
-    ```zsh
-    cd packages/cli
-    bun install
-    bun run --env-file .env src/index.ts
-    ```
+Add the google cloud speech-to-text API to the google cloud project being used for email access: https://cloud.google.com/speech-to-text?hl=en.
+
+Then create a service account by
+
+1. Go to "IAM & Admin" > "IAM"
+2. Find your service account
+3. Add the "Cloud Speech-to-Text API User" role
+4. Create a new key for the service account, and download it as json
+5. Move it to packages/cli/speech-credentials.json.
+
+Next you'll need to get langfuse credentials since prompts for the CLI are stored there.
+
+Once you have those you can copy `packages/cli/.env.example` to `packages/cli/.env` and fill it out, and then run:
+
+```zsh
+cd packages/cli
+bun install
+rm -rf dist && bun run --env-file .env src/index.ts
+```
+
+Open up [localhost:3000/](http://localhost:3000/) alongside the CLI.
+If you select "Speak" in the CLI, you need to switch focus to the web app for the web app to record, and then switch back to the CLI to hit a key to stop recording.

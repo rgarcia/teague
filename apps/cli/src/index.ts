@@ -3,17 +3,111 @@ import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentation
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { createAgent } from "@statelyai/agent";
 import addrparser from "address-rfc2822";
-import { streamText } from "ai";
-import { readFileSync } from "fs";
+import { generateText, streamText } from "ai";
+import { exec } from "child_process";
+import { ElevenLabsClient } from "elevenlabs";
+import { readFileSync, unlink } from "fs";
 import type { OAuth2Client } from "google-auth-library";
 import { gmail_v1, google } from "googleapis";
 import kleur from "kleur";
 import { ChatPromptClient, Langfuse } from "langfuse";
 import { LangfuseExporter } from "langfuse-vercel";
+import OpenAI from "openai";
+import player from "play-sound";
 import prompts from "prompts";
 import TurndownService from "turndown";
+import { promisify } from "util";
 import { v4 } from "uuid";
 import { assign, createActor, fromPromise, setup } from "xstate";
+import { TranscriptionServer } from "./server";
+
+const execAsync = promisify(exec);
+const openaiClient = new OpenAI();
+const audioPlayer = player({});
+
+// Initialize ElevenLabs client
+if (!process.env.ELEVENLABS_API_KEY) {
+  throw new Error("ELEVENLABS_API_KEY is not set");
+}
+
+console.log(process.env.ELEVENLABS_API_KEY);
+
+const elevenLabsClient = new ElevenLabsClient({
+  apiKey: process.env.ELEVENLABS_API_KEY,
+});
+
+// Function to create and play audio from text
+async function speak(
+  text: string,
+  { noLog = false }: { noLog?: boolean } = {}
+) {
+  // First, log the message as before
+  if (!noLog) {
+    console.log(kleur.green(">"), text);
+  }
+
+  try {
+    const res = await elevenLabsClient.textToSpeech.convert(
+      "JBFqnCBsd6RMkjVDRZzb",
+      {
+        output_format: "mp3_44100_128",
+        text,
+        model_id: "eleven_multilingual_v2",
+      }
+    );
+
+    const fileName = `${v4()}.mp3`;
+    const f = Bun.file(fileName);
+    const chunks = [];
+    for await (const chunk of res) {
+      chunks.push(chunk);
+    }
+    const buffer = Buffer.concat(chunks);
+    await f.write(buffer);
+
+    // Play the audio
+    await new Promise<void>((resolve, reject) => {
+      audioPlayer.play(fileName, (error: Error | null) => {
+        if (error) reject(error);
+        else resolve();
+      });
+    });
+    // Clean up the temporary file
+    await promisify(unlink)(fileName);
+  } catch (error) {
+    console.error("Error in text-to-speech:", error);
+    // Continue execution even if TTS fails
+  }
+}
+
+// Initialize transcription server
+const transcriptionServer = new TranscriptionServer({
+  port: 3001,
+  logFile: "transcription.log",
+});
+
+// Start the transcription server immediately
+transcriptionServer.start().catch((error) => {
+  console.error("Failed to start transcription server:", error);
+  process.exit(1);
+});
+console.log(
+  "[DEBUG] Transcription server started, open http://localhost:3001 if you would like to use voice"
+);
+
+// Handle graceful shutdown
+function handleShutdown() {
+  console.log("\nShutting down...");
+  transcriptionServer.stop();
+  process.exit(0);
+}
+
+// Add cleanup handlers
+process.on("SIGINT", handleShutdown);
+process.on("SIGTERM", handleShutdown);
+process.on("exit", () => {
+  transcriptionServer.stop();
+});
 
 // Initialize OpenTelemetry and Langfuse
 const requiredEnvVars = [
@@ -21,6 +115,7 @@ const requiredEnvVars = [
   "LANGFUSE_PUBLIC_KEY",
   "LANGFUSE_BASE_URL",
   "USER",
+  "GOOGLE_APPLICATION_CREDENTIALS",
 ];
 for (const requiredEnvVar of requiredEnvVars) {
   if (!process.env[requiredEnvVar]) {
@@ -46,6 +141,13 @@ const langfuse = new Langfuse({
 });
 
 const sessionId = v4();
+
+// Load the classification prompt at startup
+const classificationPrompt = await langfuse.getPrompt(
+  "classify-user-speech",
+  undefined,
+  { type: "chat", label: "production" }
+);
 
 const auth = google.auth.fromJSON(
   JSON.parse(
@@ -106,6 +208,10 @@ const archiveEmail = fromPromise<void, { messageId: string }>(
   }
 );
 
+function debug(...args: any[]) {
+  console.log("[DEBUG]", ...args);
+}
+
 const createFilter = fromPromise<void, { fromEmail: string }>(
   async ({ input }) => {
     if (!input.fromEmail) {
@@ -129,21 +235,38 @@ const createFilter = fromPromise<void, { fromEmail: string }>(
       throw new Error(`Failed to create filter: ${res.statusText}`);
     }
 
-    console.log(
-      "[DEBUG] created filter:",
-      JSON.stringify(filterConfig, null, 2)
-    );
-    console.log(
-      kleur.green("> "),
-      "Created filter for emails from",
-      input.fromEmail
-    );
+    debug("created filter:", JSON.stringify(filterConfig));
+    await speak(`Created filter for emails from ${input.fromEmail}`);
   }
 );
 
-const unsubscribeEmail = fromPromise<void, { unsubscribeUrl: string }>(
+const unsubscribeEmail = fromPromise<void, { email: EmailMessage }>(
   async ({ input }) => {
-    const res = await fetch(input.unsubscribeUrl, {
+    // Check for required headers
+    const listUnsubscribe = input.email.payload?.headers?.find(
+      (header) => header.name?.toLowerCase() === "list-unsubscribe"
+    )?.value;
+
+    const listUnsubscribePost = input.email.payload?.headers?.find(
+      (header) => header.name?.toLowerCase() === "list-unsubscribe-post"
+    )?.value;
+
+    if (!listUnsubscribe || !listUnsubscribePost) {
+      throw new Error("Cannot unsubscribe: missing required headers");
+    }
+
+    // Extract HTTPS URL from List-Unsubscribe header
+    // Format is typically: <https://example.com/unsubscribe>, <mailto:...>
+    const matches = listUnsubscribe.match(/<(https:\/\/[^>]+)>/);
+    if (!matches) {
+      throw new Error(
+        "Cannot unsubscribe: no HTTPS URL found in List-Unsubscribe header"
+      );
+    }
+
+    const unsubscribeUrl = matches[1];
+
+    const res = await fetch(unsubscribeUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -154,42 +277,10 @@ const unsubscribeEmail = fromPromise<void, { unsubscribeUrl: string }>(
     if (!res.ok) {
       throw new Error(`Failed to unsubscribe: ${res.statusText}`);
     }
-    console.log(
-      "[DEBUG] successful post to unsubscribe url: ",
-      input.unsubscribeUrl
-    );
-    console.log(kleur.green("> "), "Unsubscribed from email");
+    console.log("[DEBUG] successful post to unsubscribe url:", unsubscribeUrl);
+    await speak("Unsubscribed from email");
   }
 );
-
-function canUnsubscribe(message: EmailMessage): {
-  canUnsubscribe: boolean;
-  unsubscribeUrl?: string;
-} {
-  const listUnsubscribe = message.payload?.headers?.find(
-    (header) => header.name?.toLowerCase() === "list-unsubscribe"
-  )?.value;
-
-  const listUnsubscribePost = message.payload?.headers?.find(
-    (header) => header.name?.toLowerCase() === "list-unsubscribe-post"
-  )?.value;
-
-  if (!listUnsubscribe || !listUnsubscribePost) {
-    return { canUnsubscribe: false };
-  }
-
-  // Extract HTTPS URL from List-Unsubscribe header
-  // Format is typically: <https://example.com/unsubscribe>, <mailto:...>
-  const matches = listUnsubscribe.match(/<(https:\/\/[^>]+)>/);
-  if (!matches) {
-    return { canUnsubscribe: false };
-  }
-
-  return {
-    canUnsubscribe: true,
-    unsubscribeUrl: matches[1],
-  };
-}
 
 const agent = createAgent({
   model: openai("gpt-4o"),
@@ -210,8 +301,9 @@ const machine = setup({
       | { type: "agent.userChoiceFilter" }
       | { type: "agent.userChoiceUnsubscribe" }
       | { type: "agent.userChoiceFilterAfterUnsubscribe"; value: boolean }
+      | { type: "agent.userChoiceFeedback" }
       | {
-          type: "agent.userChoiceFeedback";
+          type: "agent.userFeedbackREceived";
           feedback: { thumb: "up" | "down"; comment: string };
         }
       | { type: "agent.emailSummaryDelivered" },
@@ -230,7 +322,7 @@ const machine = setup({
     unsubscribeEmail,
   },
 }).createMachine({
-  /** @xstate-layout N4IgpgJg5mDOIC5QAoC2BDAxgCwJYDswBKAOinQBdswAnAOTAA8KBRDXAGwGIIB7QkgQBuvANZgSaLHkKlyVWg2Zt0nBMN6ZKufgG0ADAF0DhxKAAOvWLgo78ZkI0QBaAIwBWAGz6S31-oBOAHYAZn0AJk9wkPCAGhAATxcA-RCScKD9ABYg1yyQrIAOQv0ggF8y+KkcAmISHDBMUQAJdFgVTi4TB0trW34HJwQ3d3CffQigr0zXcICsz3ik4c9gkg93QoCQgIDw9yys9wqqjBrZeuom1vb2bl1XUyQQXps7QZdXTPHtkMLXQrhDJfLJLFyrILrdybba7faHLInEDVGR1WAAV1QGBouAAXgQoFx0DB8BQSGA7gBlTHYhIAETAHFwQlokG6z1e-XszyGI08kP0qwCrjyRX+YOGRR8IS88PcuWCC08SJRtVIbVEAFVYLQiSSyeidTQAMLYXi4TBgSmiXDmdkWKxvAY8z4hIKeEiZBaHfbQzzyiXOEJukj6A5eCZBaJZAKFEIqs6o9WwLVGvVgUkkQ20U3my0AQRoNRZ9pejq5H2GrjdhRI8tS7lcUWDUcDcw97sKWTGoRyBWyCekapIGu1uuJGYNRtzFrAADFOBRaKXOe8XVW3QESEcFuEisDQq42zE68Kpnvips4-HKsjE8PR2mJ5nsyazbPNfgMQAjWCYHHfmAK7lmuoC8tWAQeoU7jbEEASbLK+SBgCkJbHMXjdl2jaxoO5x1I+476lm07vpac5gJA35YKIwF9KBjifF2rjbo23ipKsV5BIGrF1oKvqjDEngxrhSYjkWeBCASPD8BIGjiJI94XOg4nMgS6j4CIWhciYtFOtyYGfKU4weBkYaFJ4TZHok4JrCkMI7CUzblLeqoXAAZoutBSXwAhyRIrl1B5HBLji+BQOpmnaHoRi6RW65uIKHowZB+jVtCwZtmMnoxNCOTmX81aIi5il1OiX7or+-64N+3kyYIGliP5JWkGVP5-gBakaFpdg6UYPQgc6BnDFs4wwVsHhZK48H8shITMYKBwytW-r7ICInDq1FXtdVUm0DQvA0CQ5gcJQbkHagClDhcm2VR1YURZoUX4L1TwOnRg0McMQSFJCGSjP8hxwocgb5OsnjQfyBTBtW4TrUpKYACq8AuwWEZOxE5qR86eTQ+ZuSFn5tVVgGxfRvLgx6WQTNsUTg+E-hcdZVb8qeHhTBMhyAl4cP4YjyM4+mL4kXm2Oo7j+O0ITW3E0Bjz9e9+mfc4mThNucGlAzVPbFZyzOO2nrg92pQFL2FS3vgvAQHADgBUQ8t6ZWbjzO425Coewp08hIou0J+jQRMmyZPBPNyJQ1D0EwrB3PbcVDSMQRZCQglNgnIRCmGyERLWeR+1TMH+lMhQh5cjQtG0HQcDHZOfO4gRJ-4Xj+OZngFKCTPK+66T+IK-bVk2yrFVdaI0speIElXH3gbXPgtzs7ruGE-qxtxUwkLsJSAlERQikXg94cmqa0BPivgUUaTQhkf3+oEgKBn8W6pHu4NwZvmzF8pxbjxyA0n4ZcaelTSIxRuyzACHffY24AQ7EbBEGUN5ThD1IEFEKX83oO3ik3Hw3towUxjG6ZCoQk6BCmAccGsF4F3kQVmcqt0dphWPo7fwuxQzuj3I-K8kEQYux9BEFIwRhQCIHgg-eI4+YoxCgw+Ki017ZBKO6fc-JGa63pmvSasYUjBnyJ4Q2xcfJgEkXHAEawFi7Hdk2W+7coyqz4alb6YxTKwzNkAA */
+  /** @xstate-layout N4IgpgJg5mDOIC5QAoC2BDAxgCwJYDswBKAOinQBdswAnAOTAA8KBRDXAGwGIIB7QkgQBuvANZgSaLHkKlyVWg2Zt0nBMN6ZKufgG0ADAF0DhxKAAOvWLgo78ZkI0QBaAIwBWAGz6S31-oBOAHYAZn0AJk9wkPCAGhAATxcA-RCScKD9ABYg1yyQrIAOQv0ggF8y+KkcAmISHDBMUQAJdFgVTi4TB0trW34HJwQ3d3CffQigr0zXcICsz3ik4c9gkg93QoCQgIDw9yys9wqqjBrZeuom1vb2bl1XUyQQXps7QZdXTPHtkMLXQrhDJfLJLFyrILrdybba7faHLInEDVGR1WAAV1QGBouAAXgQoFx0DB8BQSGA7gBlTHYhIAETAHFwQlokG6z1e-XszyGI08kP0qwCrjyRX+YOGRR8IS88PcuWCC08SJRtVIbVEAFVYLQiSSyeidTQAMLYXi4TBgSmiXDmdkWKxvAY8z4hIKeEiZBaHfbQzzyiXOEJukj6A5eCZBaJZAKFEIqs6o9WwLVGvVgUkkQ20U3my0AQRoNRZ9pejq5H2GrjdhRI8tS7lcUWDUcDcw97sKWTGoRyBWyCekapIGu1uuJGYNRtzFrAADFOBRaKXOe8XVW3QESEcFuEisDQq42zE68Kpnvips4-HKsjE8PR2mJ5nsyazbPNfgMQAjWCYHHfmAK7lmuoC8tWAQeoU7jbEEASbLK+SBgCkJbHMXjdl2jaxoO5x1I+476lm07vpac5gJA35YKIwF9KBjifIUngeoKgTuhBpTuIG+Q+ICwqrI2bHBLhSYjkWeBCASPD8BIGjiJI94XOg4nMgS6j4CIWhciYtFOtyYGfKU4weBkYZMU2R6JOCawpDCOwlM25S3qqFwAGaLrQUl8AIckSC5dTuRwS44vgUDqZp2h6EYukVuubiCh6MGQfo1bQsGbZjJ6MTQjkTF-NWiLOYpdTol+6K-v+uDfl5MmCBpYh+cVpClT+f4AWpGhaXYOlGD0IHOgZwxbOMMFbB4WSuPB-LISErihv6+SNiE-r7ICInDi15VtVVUm0DQvA0CQ5gcJQrkHagClDhcm0Ve1oXhZokX4D1TwOnRA0McMQSFJCGSjP8hxwoc3FpE20H8gUwbVuE61KSmAAqvALkFhGTsROakfOHk0PmrnBZ+rWVYBMX0bynhMduEzbFE5PhP4QTIfyp4eFMEyHICXiw-hCNI9j6YviReZYyjON47QBNbUTQGPH1736Z9ziZOE25waU9NZIEs1tpBnrk92pQFL2FS3vgvAQHADj+UQst6ZWbjzO425Coe-GAshIpZCQwp7jEdObkETmnFddTyNQ9BMKwdw27Fg0jEEnsxJ4Tbx8tuxhshES1nk+hdmGkHypsXOkA01xtB0HDR6TnzuIEJCzWGSc58xBSglZX3uuk-iCv21ZNsqRXB6QGJYspeIEpXH3gTXPieMGwT+mE-qxoGBde7GOeRBeIqFEXI4pmONAT-L4FFGk0IZH9-qBG7bdBlsoYxAsP2xpEhcD3h6oqZJoVH3b-hxp6DWkRijdlmAEQM2VtwAh2IJaI7gbxBw-iQQKwVx4cn6sfQyJR1gmQKOTTwMY3TIVCHXNiOVyawQQXeQeWYyq3R2j-dBcs-6BC3KUKIGtsrFEgtxR2PoIgpGCMKYR-dEGiQ1IjZGwVf5xQOGkFIUp3T7n5AzW+dMvYTVjCkYM+RmJdl3t5MAMjY4AjWAsXYLswZxFvlGZWgiUrfTGKZGGxsgA */
   context: {
     currentEmail: undefined,
     nextPageToken: undefined,
@@ -291,6 +383,13 @@ const machine = setup({
           target: "unsubscribing",
         },
         "agent.userChoiceFeedback": {
+          target: "givingFeedback",
+        },
+      },
+    },
+    givingFeedback: {
+      on: {
+        "agent.userFeedbackREceived": {
           target: "summarizing",
           actions: [
             ({ event, context }) => {
@@ -351,22 +450,14 @@ const machine = setup({
     unsubscribing: {
       invoke: {
         src: "unsubscribeEmail",
-        input: ({ context }) => {
-          const unsubscribeInfo = canUnsubscribe(context.currentEmail!);
-          if (
-            !unsubscribeInfo.canUnsubscribe ||
-            !unsubscribeInfo.unsubscribeUrl
-          ) {
-            throw new Error("Cannot unsubscribe from this email");
-          }
-          return { unsubscribeUrl: unsubscribeInfo.unsubscribeUrl };
-        },
+        input: ({ context }) => ({
+          email: context.currentEmail!,
+        }),
         onDone: "archiving",
         onError: {
           target: "askToFilter",
-          actions: () => {
-            console.log(
-              kleur.red("> "),
+          actions: async () => {
+            await speak(
               "Could not unsubscribe - would you like to create a filter instead?"
             );
           },
@@ -388,13 +479,207 @@ const machine = setup({
       },
     },
     done: {
-      entry: () => {
-        console.log(kleur.green("> "), "No more emails to process!");
+      entry: async () => {
+        await speak("No more emails to process!");
         process.exit(0);
       },
     },
   },
 });
+
+async function recordAndTranscribe(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    console.log(
+      kleur.yellow("> "),
+      "Starting recording... Press any key to stop."
+    );
+
+    // Send command to start recording
+    transcriptionServer.sendCommand({ type: "start-recording" });
+
+    let finalTranscription: string | null = null;
+    let isCleanedUp = false;
+
+    // Set up transcription handler
+    const handleTranscription = (transcription: string) => {
+      finalTranscription = transcription;
+    };
+
+    const handleError = (error: Error) => {
+      cleanup();
+      reject(error);
+    };
+
+    const cleanup = () => {
+      if (isCleanedUp) return;
+      isCleanedUp = true;
+
+      // Remove all listeners
+      transcriptionServer.removeListener(
+        "final-transcription",
+        handleTranscription
+      );
+      transcriptionServer.removeListener("error", handleError);
+      process.stdin.removeListener("data", handleKeyPress);
+      // Restore stdin to its previous mode
+      process.stdin.setRawMode(false);
+      process.stdin.pause();
+    };
+
+    // Handle any key press
+    const handleKeyPress = () => {
+      transcriptionServer.sendCommand({ type: "stop-recording" });
+
+      // Wait a bit for any final transcription to come in
+      setTimeout(() => {
+        cleanup();
+        if (finalTranscription) {
+          console.log("[DEBUG] transcription:", finalTranscription);
+          resolve(finalTranscription);
+        } else {
+          console.log("[DEBUG] No transcription received");
+          reject(new Error("No transcription received"));
+        }
+      }, 1000);
+    };
+
+    // Set up stdin to listen for any key
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", handleKeyPress);
+
+    // Listen for transcription events
+    transcriptionServer.on("final-transcription", handleTranscription);
+    transcriptionServer.on("error", handleError);
+  });
+}
+
+async function classifyUserSpeech(
+  transcription: string
+): Promise<"skip" | "archive" | "filter" | "unsubscribe" | "give feedback"> {
+  const availableActions = [
+    "skip",
+    "archive",
+    "filter",
+    "unsubscribe",
+    "give feedback",
+  ] as const;
+
+  const prompt = classificationPrompt.compile({
+    transcription,
+    classes: availableActions.map((action) => `- ${action}`).join("\n"),
+  });
+
+  const { text } = await generateText({
+    model: agent.model,
+    system: prompt[0].content,
+    prompt: prompt[1].content,
+    experimental_telemetry: {
+      isEnabled: true,
+      metadata: {
+        langfusePrompt: classificationPrompt.toJSON(),
+        langfuseUpdateParent: true,
+        sessionId,
+        tags: [`env:local-${process.env.USER}`],
+      },
+    },
+  });
+
+  const action = text.trim().toLowerCase();
+  if (!availableActions.includes(action as any)) {
+    throw new Error(`Could not classify speech into a valid action: ${action}`);
+  }
+
+  await speak(`OK, I'll ${action}.`);
+
+  return action as (typeof availableActions)[number];
+}
+
+// Handle user input through either voice or prompts
+function sendActionEvent(
+  actor: any,
+  action: "skip" | "archive" | "filter" | "unsubscribe" | "give feedback"
+) {
+  switch (action) {
+    case "skip":
+      actor.send({ type: "agent.userChoiceSkip" });
+      break;
+    case "archive":
+      actor.send({ type: "agent.userChoiceArchive" });
+      break;
+    case "filter":
+      actor.send({ type: "agent.userChoiceFilter" });
+      break;
+    case "unsubscribe":
+      actor.send({ type: "agent.userChoiceUnsubscribe" });
+      break;
+    case "give feedback":
+      actor.send({ type: "agent.userChoiceFeedback" });
+      break;
+  }
+}
+
+async function handleUserInput(actor: any) {
+  const response = await prompts([
+    {
+      type: "select",
+      name: "action",
+      message: "What would you like to do?",
+      choices: [
+        { title: "🎤 Speak", value: "speak" },
+        { title: "Skip", value: "skip" },
+        { title: "Archive", value: "archive" },
+        { title: "Filter", value: "filter" },
+        { title: "Unsubscribe", value: "unsubscribe" },
+        { title: "Give Feedback", value: "give feedback" },
+      ],
+    },
+  ]);
+
+  if (response.action === "speak") {
+    try {
+      const transcription = await recordAndTranscribe();
+      const action = await classifyUserSpeech(transcription);
+      sendActionEvent(actor, action);
+    } catch (error) {
+      console.error(
+        kleur.red("> "),
+        "Failed to process speech input - please try again"
+      );
+      void handleUserInput(actor);
+    }
+  } else {
+    sendActionEvent(actor, response.action);
+  }
+}
+
+async function handleFeedbackInput(actor: any) {
+  const feedback = await prompts([
+    {
+      type: "select",
+      name: "thumb",
+      message: "How was the summary?",
+      choices: [
+        { title: "👍", value: "up" },
+        { title: "👎", value: "down" },
+      ],
+    },
+    {
+      type: "text",
+      name: "comment",
+      message: "Any additional feedback?",
+    },
+  ]);
+
+  actor.send({
+    type: "agent.userFeedbackREceived",
+    feedback: {
+      thumb: feedback.thumb,
+      comment: feedback.comment,
+    },
+  });
+}
 
 const actor = createActor(machine);
 agent.interact(actor, (observed) => {
@@ -415,7 +700,7 @@ agent.interact(actor, (observed) => {
         throw new Error("Expected a chat prompt with system message first");
       }
 
-      const { textStream } = streamText({
+      const { textStream, text } = streamText({
         model: agent.model,
         system: prompt[0].content,
         prompt: prompt[1].content,
@@ -440,70 +725,15 @@ agent.interact(actor, (observed) => {
         process.stdout.write(textPart);
       }
       process.stdout.write("\n");
+      await speak(await text, { noLog: true });
       actor.send({
         type: "agent.emailSummaryDelivered",
       });
     })();
   } else if (observed.state.matches("askUser")) {
-    void (async () => {
-      const response = await prompts([
-        {
-          type: "select",
-          name: "action",
-          message: "What would you like to do?",
-          choices: [
-            { title: "Skip", value: "skip" },
-            { title: "Archive", value: "archive" },
-            { title: "Filter", value: "filter" },
-            { title: "Unsubscribe", value: "unsubscribe" },
-            { title: "Give Feedback", value: "feedback" },
-          ],
-        },
-      ]);
-
-      if (response.action === "feedback") {
-        const feedback = await prompts([
-          {
-            type: "select",
-            name: "thumb",
-            message: "How was the summary?",
-            choices: [
-              { title: "👍", value: "up" },
-              { title: "👎", value: "down" },
-            ],
-          },
-          {
-            type: "text",
-            name: "comment",
-            message: "Any additional feedback?",
-          },
-        ]);
-
-        actor.send({
-          type: "agent.userChoiceFeedback",
-          feedback: {
-            thumb: feedback.thumb,
-            comment: feedback.comment,
-          },
-        });
-      } else if (response.action === "skip") {
-        actor.send({
-          type: "agent.userChoiceSkip",
-        });
-      } else if (response.action === "archive") {
-        actor.send({
-          type: "agent.userChoiceArchive",
-        });
-      } else if (response.action === "filter") {
-        actor.send({
-          type: "agent.userChoiceFilter",
-        });
-      } else if (response.action === "unsubscribe") {
-        actor.send({
-          type: "agent.userChoiceUnsubscribe",
-        });
-      }
-    })();
+    void handleUserInput(actor);
+  } else if (observed.state.matches("givingFeedback")) {
+    void handleFeedbackInput(actor);
   } else if (observed.state.matches("askToFilter")) {
     void (async () => {
       const response = await prompts([
