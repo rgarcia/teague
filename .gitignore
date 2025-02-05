@@ -1,3 +1,4 @@
+**/*/.env
 # google cloud auth stuff
 packages/auth/credentials.json
 packages/auth/token.json
