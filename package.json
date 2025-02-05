@@ -11,5 +11,8 @@
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "overrides": {
+    "crossws": "0.2.4"
+  }
 }
