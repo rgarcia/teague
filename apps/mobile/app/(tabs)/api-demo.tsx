@@ -36,6 +36,7 @@ const ApiDemoScreen = () => {
     // initiate an oai realtime session
     const response = await fetch(`${API_BASE_URL}/oaisession`);
     const data = await response.json();
+    console.log("oaisession response", data);
     const EPHEMERAL_KEY = data.client_secret.value;
     console.log("token response", EPHEMERAL_KEY);
 

@@ -10,7 +10,9 @@ export const APIRoute = createAPIFileRoute("/api/oaisession")({
       },
       body: JSON.stringify({
         model: "gpt-4o-realtime-preview-2024-12-17",
-        voice: "verse",
+        //        voice: "verse",
+        //        voice: "sol", // "not available for your account"
+        voice: "nova",
       }),
     });
 
