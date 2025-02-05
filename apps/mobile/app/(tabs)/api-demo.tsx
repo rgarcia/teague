@@ -3,13 +3,15 @@ import { useState } from "react";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+
 export default function ApiDemoScreen() {
   const colorScheme = useColorScheme();
   const [apiResponse, setApiResponse] = useState<string>("");
 
   async function fetchFromApi() {
     try {
-      const response = await fetch("/demo");
+      const response = await fetch(`${BASE_URL}/api/demo`);
       const data = await response.json();
       setApiResponse(JSON.stringify(data, null, 2));
     } catch (error) {
