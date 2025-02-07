@@ -28,7 +28,6 @@ export default function HomeScreen() {
         <ThemedText type="subtitle">CLOC</ThemedText>
         <ThemedText>
           <Suspense fallback={<ActivityIndicator />}>
-            {/* @ts-expect-error - Async components are valid in Server Components */}
             <GetCloc />
           </Suspense>
         </ThemedText>

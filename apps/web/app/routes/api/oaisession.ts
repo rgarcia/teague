@@ -1,4 +1,5 @@
 import { createAPIFileRoute } from "@tanstack/start/api";
+import type { Realtime } from "openai/resources/beta/realtime/realtime";
 
 export const APIRoute = createAPIFileRoute("/api/oaisession")({
   GET: async ({ request, params }) => {
@@ -10,10 +11,11 @@ export const APIRoute = createAPIFileRoute("/api/oaisession")({
       },
       body: JSON.stringify({
         model: "gpt-4o-realtime-preview-2024-12-17",
-        //        voice: "verse",
-        //        voice: "sol", // "not available for your account"
-        voice: "nova",
-      }),
+        // https://platform.openai.com/docs/guides/text-to-speech
+        // Supported values are: 'alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', and 'verse'."
+        voice: "alloy",
+        modalities: ["audio", "text"],
+      } as Realtime.SessionCreateParams),
     });
 
     return new Response(r.body, {

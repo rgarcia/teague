@@ -15,12 +15,24 @@ import { getWebRequest } from "@tanstack/start/server";
 import { DefaultCatchBoundary } from "~/components/DefaultCatchBoundary.js";
 import { NotFound } from "~/components/NotFound.js";
 import appCss from "~/styles/app.css?url";
+import { createClerkClient } from "@clerk/backend";
+const clerk = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY,
+});
 
 const fetchClerkAuth = createServerFn({ method: "GET" }).handler(async () => {
   const { userId } = await getAuth(getWebRequest()!);
-
+  if (!userId) {
+    return {};
+  }
+  const response = await clerk.users.getUserOauthAccessToken(
+    userId,
+    "oauth_google"
+  );
+  const googleToken = response.data[0].token;
   return {
     userId,
+    googleToken,
   };
 });
 
@@ -59,10 +71,10 @@ export const Route = createRootRoute({
     ],
   }),
   beforeLoad: async () => {
-    const { userId } = await fetchClerkAuth();
-
+    const { userId, googleToken } = await fetchClerkAuth();
     return {
       userId,
+      googleToken,
     };
   },
   errorComponent: (props) => {

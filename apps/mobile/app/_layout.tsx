@@ -9,6 +9,8 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import "react-native-reanimated";
+import TranscriptProvider from "@/contexts/transcript";
+import EventProvider from "@/contexts/event";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
 
@@ -33,10 +35,14 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
+      <EventProvider>
+        <TranscriptProvider>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="+not-found" />
+          </Stack>
+        </TranscriptProvider>
+      </EventProvider>
       <StatusBar style="auto" />
     </ThemeProvider>
   );
