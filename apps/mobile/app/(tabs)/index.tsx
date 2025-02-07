@@ -287,11 +287,6 @@ class InboxScrollerAgent extends BaseAgent {
   ];
 }
 
-interface RealtimeEvent {
-  type: "realtime.events";
-  events: RealtimeClientEvent[];
-}
-
 const ApiDemoScreen = () => {
   const colorScheme = useColorScheme() ?? "light";
   const {
