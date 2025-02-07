@@ -4,7 +4,7 @@ import React, {
   useState,
   type ReactNode,
 } from "react";
-import { v4 as uuidv4 } from "uuid";
+import uuid from "react-native-uuid";
 import type { LoggedEvent } from "@/lib/types";
 
 type EventContextValue = {
@@ -34,7 +34,7 @@ const EventProvider = ({ children }: EventProviderProps) => {
     eventName: string,
     eventData: Record<string, any>
   ) {
-    const id = eventData.event_id || uuidv4();
+    const id = eventData.event_id || uuid.v4();
     setLoggedEvents((prev) => [
       ...prev,
       {
