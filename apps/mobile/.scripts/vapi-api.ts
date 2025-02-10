@@ -8,9 +8,12 @@ const systemPrompt = readFileSync(
   "utf-8"
 );
 
-async function updateAssistant() {
+async function updateAssistant(toolIds: string[]) {
   const assistants = await client.assistants.list();
-  console.log("assistants", JSON.stringify(assistants, null, 2));
+  console.log(
+    "Found assistants:",
+    assistants.map((a) => ({ id: a.id, name: a.name }))
+  );
 
   const teague = assistants.find((assistant) => assistant.name === "Teague");
   if (!teague) {
@@ -28,9 +31,7 @@ async function updateAssistant() {
           content: systemPrompt,
         },
       ],
-      toolIds: [
-        "a583fb39-ee7e-4239-b42d-24685926c4a8", // GetNextEmail
-      ],
+      toolIds: toolIds,
     },
     firstMessage: "Hello, want to get to inbox zero today?",
     voicemailMessage: "Hey this is Ava, can you call me back when you're free?",
@@ -73,26 +74,28 @@ async function updateAssistant() {
     endCallPhrases: ["goodbye"],
   });
 
-  console.log("updated teague", JSON.stringify(updateRes, null, 2));
+  console.log("Updated Teague assistant:", {
+    id: updateRes.id,
+    name: updateRes.name,
+    model: updateRes.model!.model,
+    toolIds: updateRes.model!.toolIds,
+  });
 }
 
-async function updateTools() {
+async function updateTools(): Promise<string[]> {
   const tools = await client.tools.list();
-  console.log("tools", JSON.stringify(tools, null, 2));
+  console.log(
+    "Found tools:",
+    tools.map((t) => ({
+      id: t.id,
+      name: t.function?.name,
+    }))
+  );
 
   const getNextEmailDef = {
     type: "function",
-    name: "GetNextEmail",
     async: false,
     messages: [
-      {
-        type: "request-start" as const,
-        content: "Getting another email...",
-      },
-      {
-        type: "request-complete" as const,
-        content: "Email from ... about ...",
-      },
       {
         type: "request-failed" as const,
         content:
@@ -106,7 +109,7 @@ async function updateTools() {
       },
     ],
     server: {
-      url: "https://raf--teague.ngrok.app/api/gmail/next-email",
+      url: "https://raf--cannon.ngrok.app/api/gmail/next-email",
     },
     function: {
       name: "GetNextEmail",
@@ -122,35 +125,111 @@ async function updateTools() {
             type: "string" as const,
             description: "The email query to use. E.g., 'in:inbox'",
           },
+          pageToken: {
+            type: "string" as const,
+            description: "The page token to use for pagination",
+          },
         },
         required: ["maxResults", "query"],
       },
     },
   };
+
+  const archiveEmailDef = {
+    type: "function",
+    //    name: "ArchiveEmail",
+    async: false,
+    messages: [
+      {
+        type: "request-failed" as const,
+        content:
+          "I couldn't archive the email right now, please try again later.",
+      },
+      {
+        type: "request-response-delayed" as const,
+        content: "It appears there is some delay in archiving the email.",
+        timingMilliseconds: 2000,
+      },
+    ],
+    server: {
+      url: "https://raf--cannon.ngrok.app/api/gmail/archive",
+    },
+    function: {
+      name: "ArchiveEmail",
+      description: "Archive a specific email from the user's inbox.",
+      parameters: {
+        type: "object" as const,
+        properties: {
+          messageId: {
+            type: "string" as const,
+            description: "The ID of the message to archive",
+          },
+        },
+        required: ["messageId"],
+      },
+    },
+  };
+
+  const toolIds: string[] = [];
+
   const getNextEmail = tools.find(
     (tool) => tool.function?.name === "GetNextEmail"
   );
   if (!getNextEmail) {
-    console.log("getNextEmail tool not found");
     const created = await client.tools.create(
       getNextEmailDef as Vapi.ToolsCreateRequest
     );
-    console.log("created getNextEmail", JSON.stringify(created, null, 2));
+    console.log("Created GetNextEmail tool:", {
+      id: created.id,
+      name: created.function?.name,
+    });
+    toolIds.push(created.id);
   } else {
-    console.log("updating getNextEmail");
     const updated = await client.tools.update(getNextEmail.id, {
       async: getNextEmailDef.async,
       function: getNextEmailDef.function,
       messages: getNextEmailDef.messages,
       server: getNextEmailDef.server,
     });
-    console.log("updated getNextEmail", JSON.stringify(updated, null, 2));
+    console.log("Updated GetNextEmail tool:", {
+      id: updated.id,
+      name: updated.function?.name,
+    });
+    toolIds.push(updated.id);
   }
+
+  const archiveEmail = tools.find(
+    (tool) => tool.function?.name === "ArchiveEmail"
+  );
+  if (!archiveEmail) {
+    const created = await client.tools.create(
+      archiveEmailDef as Vapi.ToolsCreateRequest
+    );
+    console.log("Created ArchiveEmail tool:", {
+      id: created.id,
+      name: created.function?.name,
+    });
+    toolIds.push(created.id);
+  } else {
+    const updated = await client.tools.update(archiveEmail.id, {
+      async: archiveEmailDef.async,
+      function: archiveEmailDef.function,
+      messages: archiveEmailDef.messages,
+      server: archiveEmailDef.server,
+    });
+    console.log("Updated ArchiveEmail tool:", {
+      id: updated.id,
+      name: updated.function?.name,
+    });
+    toolIds.push(updated.id);
+  }
+
+  return toolIds;
 }
 
 async function main() {
-  await updateAssistant();
-  //await updateTools();
+  const toolIds = await updateTools();
+  await updateAssistant(toolIds);
 }
 
 main().catch(console.error);

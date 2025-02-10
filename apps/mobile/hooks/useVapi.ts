@@ -1,4 +1,5 @@
 import vapi from "@/lib/vapi.sdk";
+import { OverrideAssistantDTO } from "@vapi-ai/react-native/dist/api";
 import { Vapi } from "@vapi-ai/server-sdk";
 import { useEffect, useState } from "react";
 
@@ -65,13 +66,14 @@ export function useVapi() {
     };
   }, []);
 
-  const start = async () => {
+  const start = async (assistantOverrides?: OverrideAssistantDTO) => {
     console.log("[vapi] starting the call");
     setCallStatus(CALL_STATUS.LOADING);
     // setCallStatus(CALL_STATUS.LOADING);
-    const response = vapi.start("48b68590-564a-44b2-94d4-7a7a649e7c53", {
-      serverUrlSecret: "TODO",
-    });
+    const response = vapi.start(
+      process.env.EXPO_PUBLIC_VAPI_ASSISTANT_ID!,
+      assistantOverrides
+    );
     // default to muted on call start
     vapi.once("call-start", () => {
       vapi.setMuted(true);
@@ -115,11 +117,11 @@ export function useVapi() {
     vapi.stop();
   };
 
-  const toggleCall = async () => {
+  const toggleCall = async (assistantOverrides?: OverrideAssistantDTO) => {
     if (callStatus === CALL_STATUS.ACTIVE) {
       stop();
     } else {
-      await start();
+      await start(assistantOverrides);
     }
   };
 

@@ -1,5 +1,5 @@
 {
-  "name": "ea0",
+  "name": "cannon",
   "type": "module",
   "workspaces": [
     "packages/*",
