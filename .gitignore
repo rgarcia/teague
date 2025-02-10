@@ -2,6 +2,7 @@
 # google cloud auth stuff
 packages/auth/credentials.json
 packages/auth/token.json
+apps/cli/speech-credentials.json
 
 # my todos
 TODO

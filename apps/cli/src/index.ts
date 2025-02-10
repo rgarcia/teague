@@ -4,7 +4,6 @@ import { NodeSDK } from "@opentelemetry/sdk-node";
 import { createAgent } from "@statelyai/agent";
 import addrparser from "address-rfc2822";
 import { generateText, streamText } from "ai";
-import { exec } from "child_process";
 import { ElevenLabsClient } from "elevenlabs";
 import { readFileSync, unlink } from "fs";
 import type { OAuth2Client } from "google-auth-library";
@@ -21,7 +20,6 @@ import { v4 } from "uuid";
 import { assign, createActor, fromPromise, setup } from "xstate";
 import { TranscriptionServer } from "./server";
 
-const execAsync = promisify(exec);
 const openaiClient = new OpenAI();
 const audioPlayer = player({});
 
@@ -170,10 +168,8 @@ const gmailMessagesListAndGet = fromPromise<
     throw new Error(`Failed to list messages: ${res.statusText}`);
   }
 
-  const nextPageToken = res.data.nextPageToken ?? undefined;
-
   if (!res.data.messages || res.data.messages.length === 0) {
-    return { nextPageToken, message: undefined };
+    throw new Error("NO_MORE_EMAILS");
   }
 
   const messageRes = await gmail.users.messages.get({
@@ -187,7 +183,7 @@ const gmailMessagesListAndGet = fromPromise<
   }
 
   return {
-    nextPageToken,
+    nextPageToken: res.data.nextPageToken ?? undefined,
     message: messageRes.data,
   };
 });
@@ -303,7 +299,7 @@ const machine = setup({
       | { type: "agent.userChoiceFilterAfterUnsubscribe"; value: boolean }
       | { type: "agent.userChoiceFeedback" }
       | {
-          type: "agent.userFeedbackREceived";
+          type: "agent.userFeedbackReceived";
           feedback: { thumb: "up" | "down"; comment: string };
         }
       | { type: "agent.emailSummaryDelivered" },
@@ -322,7 +318,7 @@ const machine = setup({
     unsubscribeEmail,
   },
 }).createMachine({
-  /** @xstate-layout N4IgpgJg5mDOIC5QAoC2BDAxgCwJYDswBKAOinQBdswAnAOTAA8KBRDXAGwGIIB7QkgQBuvANZgSaLHkKlyVWg2Zt0nBMN6ZKufgG0ADAF0DhxKAAOvWLgo78ZkI0QBaAIwBWAGz6S31-oBOAHYAZn0AJk9wkPCAGhAATxcA-RCScKD9ABYg1yyQrIAOQv0ggF8y+KkcAmISHDBMUQAJdFgVTi4TB0trW34HJwQ3d3CffQigr0zXcICsz3ik4c9gkg93QoCQgIDw9yys9wqqjBrZeuom1vb2bl1XUyQQXps7QZdXTPHtkMLXQrhDJfLJLFyrILrdybba7faHLInEDVGR1WAAV1QGBouAAXgQoFx0DB8BQSGA7gBlTHYhIAETAHFwQlokG6z1e-XszyGI08kP0qwCrjyRX+YOGRR8IS88PcuWCC08SJRtVIbVEAFVYLQiSSyeidTQAMLYXi4TBgSmiXDmdkWKxvAY8z4hIKeEiZBaHfbQzzyiXOEJukj6A5eCZBaJZAKFEIqs6o9WwLVGvVgUkkQ20U3my0AQRoNRZ9pejq5H2GrjdhRI8tS7lcUWDUcDcw97sKWTGoRyBWyCekapIGu1uuJGYNRtzFrAADFOBRaKXOe8XVW3QESEcFuEisDQq42zE68Kpnvips4-HKsjE8PR2mJ5nsyazbPNfgMQAjWCYHHfmAK7lmuoC8tWAQeoU7jbEEASbLK+SBgCkJbHMXjdl2jaxoO5x1I+476lm07vpac5gJA35YKIwF9KBjifIUngeoKgTuhBpTuIG+Q+ICwqrI2bHBLhSYjkWeBCASPD8BIGjiJI94XOg4nMgS6j4CIWhciYtFOtyYGfKU4weBkYZMU2R6JOCawpDCOwlM25S3qqFwAGaLrQUl8AIckSC5dTuRwS44vgUDqZp2h6EYukVuubiCh6MGQfo1bQsGbZjJ6MTQjkTF-NWiLOYpdTol+6K-v+uDfl5MmCBpYh+cVpClT+f4AWpGhaXYOlGD0IHOgZwxbOMMFbB4WSuPB-LISErihv6+SNiE-r7ICInDi15VtVVUm0DQvA0CQ5gcJQrkHagClDhcm0Ve1oXhZokX4D1TwOnRA0McMQSFJCGSjP8hxwoc3FpE20H8gUwbVuE61KSmAAqvALkFhGTsROakfOHk0PmrnBZ+rWVYBMX0bynhMduEzbFE5PhP4QTIfyp4eFMEyHICXiw-hCNI9j6YviReZYyjON47QBNbUTQGPH1736Z9ziZOE25waU9NZIEs1tpBnrk92pQFL2FS3vgvAQHADj+UQst6ZWbjzO425Coe-GAshIpZCQwp7jEdObkETmnFddTyNQ9BMKwdw27Fg0jEEnsxJ4Tbx8tuxhshES1nk+hdmGkHypsXOkA01xtB0HDR6TnzuIEJCzWGSc58xBSglZX3uuk-iCv21ZNsqRXB6QGJYspeIEpXH3gTXPieMGwT+mE-qxoGBde7GOeRBeIqFEXI4pmONAT-L4FFGk0IZH9-qBG7bdBlsoYxAsP2xpEhcD3h6oqZJoVH3b-hxp6DWkRijdlmAEQM2VtwAh2IJaI7gbxBw-iQQKwVx4cn6sfQyJR1gmQKOTTwMY3TIVCHXNiOVyawQQXeQeWYyq3R2j-dBcs-6BC3KUKIGtsrFEgtxR2PoIgpGCMKYR-dEGiQ1IjZGwVf5xQOGkFIUp3T7n5AzW+dMvYTVjCkYM+RmJdl3t5MAMjY4AjWAsXYLswZxFvlGZWgiUrfTGKZGGxsgA */
+  /** @xstate-layout N4IgpgJg5mDOIC5QAoC2BDAxgCwJYDswBKAOinQBdswAnAOTAA8KBRDXAGwGIIB7QkgQBuvANZgSaLHkKlyVWg2Zt0nBMN6ZKufgG0ADAF0DhxKAAOvWLgo78ZkI0QAmABzOAjCVcfnANg8-AGYAFl8ggFYggBoQAE9EUIB2EmdQ1wiQpL8cpP0-CIBfQtipHAJiMkpqeiZWdm5aGl4aEnMOSgAzFtRJDHLZKoVa5Qb1fBEtWz0jEwdLa2n7JEcXdy8ff0DQ8KjYhIRnAE4jkiT0vyyTiP0o4tL+mUr5GqV61UaaZtb2rp6+6QVOTVRR1FRqDRTOwmXQeUwrBY2OwOJyHdbeXwBYJhNJ7eIufJnHxJJL+JJHVxBSlFEogMpPUiwACuqAwNFwAC8CFAuOgYPgKCQwA0AMostlxAAiYA4uCEtEgcwRViR-BRLiOnhIIWczn0etupNc+0QSQifhIR2yEWc2TcETt9zpjyBJHQsFEAFVYLRefzBUyfTQAMLYXi4TBgEWiXDmJUWFVLdWHfT6bV+Vyko6ZEIRc1JE0IYIW3UFQLnbMefRJJ3013ur1Bv1gAUkQO0UPhyMAQRo5Xl8ZAiKTK1RBvTmeOObzfgL+IQPhINIegMGDe9vr5LYDQc7EbAADFOBRaIPh8jRwS0yEM1np-nC5404Eckd8h4SUkPO5ay61x6NxoZtW3bEMw33T18GZAAjWBMHZaCwDPRML1AMdUwnO8QlzB95yCHISCCI4gg8I5cxCSls1-VdKnXJstxA3dwMjA8wEgaCsFEZDFlQ1YU2vW8p2wmc5wOI4PCCEhZyOAJSVtYiSWogZnjlblWPYzjgJ3Wh1IgDjMFEAAlMBIzlRUjHmFC1UvBBSRCEhvySHCgnOfQSIiQtMxSUkCipCIP0uDxl2dGjSHQPs8CEbkeH4CQNHEAFlLCiLVPwKBxkmbQZmMCzlR46y0JcIIgjTfQgozY5rluGJ51xbxU1TVxU2w-QKVcJSGRITpj1oaK+AEeKJDrQZuo4E92TSjLNCy-AYVyhN8uWQqEFIkizgKHJKQkk5nBCR9-DOEITncfxXEzKl2tpYbKiZKCmVg+DcGgvrYsECYxCGv8bruh6EO5KaoWy7jVSWvi7IczNnNc9zC381xtWtFycg8MJqw611bpguC-rSrgmhaNoOgoboaF6a7SEx+7sae-7IRmub4QWkHk3BxyoZKmG8JKy0XzzCSJK2EJ0f-UQABVeCPMbN39NsmK7Q8epobtOnGyCscexDgZHZaPAkksZM1VwjpvHI-ELUIIjOfwIh8SizSpPxhdoj1xcl8atNljtmIVqWlZV2g1apjWkLhSzFuTXX8NSA23GN02zbwmTUmtqtXE2vxnDzYpaXwXgIDgBxybD5mbIAWgTg5y6d4FhjecEOGL7W+MzwJDpOa4yPcGqDlLQjKWKvMHStDOayur7GXFcLOW5RveNRII9RSUIqSCmTXE7wszRSLICltDOMkdMfQrdACg1ngq+J1Qsk5vHViKOzx16zo+krIVKoF0-TRHP0HUX87eXKoxJFkbIRxr4owcuSPIJwkhPxONXN0KUoppR-smTwWpM5lTKv4VGFcXC62jicWc75iogIQaNcaM88olx1q5VINx8jHCcrbY0tV9T0NTKnde+QoiXRXK-Smv0aYoOoU3VEFF7JOROLmJGfgZL4XNiESSRESKajkRkG2QUEENldorVBNkqzsMzDcHU5pdQuQ8ObG0UklFpFyNkaqQQEH9TAPo5aC9qyESUT4CIa8N61T1CQVqgQlE230CENyGZs6FCAA */
   context: {
     currentEmail: undefined,
     nextPageToken: undefined,
@@ -341,25 +337,33 @@ const machine = setup({
           pageToken: context.nextPageToken,
         }),
         onDone: {
-          target: "checkHasEmail",
+          target: "summarizing",
           actions: assign({
             currentEmail: ({ event }) => event.output.message,
             nextPageToken: ({ event }) => event.output.nextPageToken,
             traceId: () => v4(),
           }),
         },
+        onError: [
+          {
+            guard: ({ event }) =>
+              event.error instanceof Error &&
+              event.error.message === "NO_MORE_EMAILS",
+            target: "done",
+          },
+          {
+            // Handle other errors
+            target: "done",
+            actions: async ({ event }) => {
+              const message =
+                event.error instanceof Error
+                  ? event.error.message
+                  : "Unknown error";
+              await speak(`Error processing emails: ${message}`);
+            },
+          },
+        ],
       },
-    },
-    checkHasEmail: {
-      always: [
-        {
-          guard: "hasMoreEmails",
-          target: "summarizing",
-        },
-        {
-          target: "done",
-        },
-      ],
     },
     summarizing: {
       on: {
@@ -389,7 +393,7 @@ const machine = setup({
     },
     givingFeedback: {
       on: {
-        "agent.userFeedbackREceived": {
+        "agent.userFeedbackReceived": {
           target: "summarizing",
           actions: [
             ({ event, context }) => {
@@ -673,7 +677,7 @@ async function handleFeedbackInput(actor: any) {
   ]);
 
   actor.send({
-    type: "agent.userFeedbackREceived",
+    type: "agent.userFeedbackReceived",
     feedback: {
       thumb: feedback.thumb,
       comment: feedback.comment,
