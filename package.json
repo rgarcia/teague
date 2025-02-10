@@ -3,7 +3,8 @@
   "type": "module",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/cli",
+    "apps/web"
   ],
   "devDependencies": {
     "@types/bun": "latest"

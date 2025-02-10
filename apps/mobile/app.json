@@ -5,12 +5,25 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "teague",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.rafgarcia.teague",
+      "bundleIdentifier": "co.vapi.DailyPlayground",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "voip"
+        ],
+        "NSMicrophoneUsageDescription": "Teague needs microphone access to work"
+      },
       "bitcode": false
     },
     "android": {
@@ -18,66 +31,43 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "package": "co.vapi.DailyPlayground",
       "permissions": [
         "android.permission.ACCESS_NETWORK_STATE",
-        "android.permission.CAMERA",
-        "android.permission.INTERNET",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.SYSTEM_ALERT_WINDOW",
-        "android.permission.WAKE_LOCK",
         "android.permission.BLUETOOTH",
-        "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.CAMERA",
         "android.permission.INTERNET",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.RECORD_AUDIO",
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.WAKE_LOCK",
-        "android.permission.BLUETOOTH"
-      ],
-      "package": "com.rafgarcia.teague"
+        "android.permission.FOREGROUND_SERVICE"
+      ]
     },
     "web": {
       "bundler": "metro",
-      "output": "server",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       "expo-router",
+      "@config-plugins/react-native-webrtc",
+      "@daily-co/config-plugin-rn-daily-js",
       [
-        "expo-splash-screen",
+        "expo-build-properties",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
-        }
-      ],
-      [
-        "expo-router",
-        {
-          "origin": "https://example.com/"
-        }
-      ],
-      [
-        "@config-plugins/react-native-webrtc",
-        {
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone"
-        }
-      ],
-      [
-        "expo-av",
-        {
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
+          "android": {
+            "minSdkVersion": 24
+          },
+          "ios": {
+            "deploymentTarget": "13.4"
+          }
         }
       ]
     ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactServerFunctions": true
-    },
     "extra": {
+      "router": {
+        "origin": false
+      },
       "eas": {
         "projectId": "6eed7dea-6922-43c7-887a-c444e856d8f7"
       }
