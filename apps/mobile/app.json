@@ -16,7 +16,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "ai.cannon.mobile",
       "infoPlist": {
-        "UIBackgroundModes": ["voip"],
+        "UIBackgroundModes": [
+          "voip"
+        ],
         "NSMicrophoneUsageDescription": "Cannon needs microphone access to work"
       },
       "bitcode": false
@@ -26,7 +28,18 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "ai.cannon.mobile"
+      "package": "ai.cannon.mobile",
+      "permissions": [
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.BLUETOOTH",
+        "android.permission.CAMERA",
+        "android.permission.INTERNET",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.WAKE_LOCK",
+        "android.permission.FOREGROUND_SERVICE"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -52,6 +65,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "f1afe34f-28ce-4e84-b6c6-7489b10ec5bc"
+      }
     }
   }
 }

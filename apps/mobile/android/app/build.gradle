@@ -201,7 +201,3 @@ if (rnVersion < versionToNumber(0, 75, 0)) {
 }
 
 android.packagingOptions.jniLibs.useLegacyPackaging = true
-
-android.packagingOptions.jniLibs.useLegacyPackaging = true
-
-android.packagingOptions.jniLibs.useLegacyPackaging = true
