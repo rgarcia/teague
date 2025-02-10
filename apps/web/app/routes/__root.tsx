@@ -25,10 +25,7 @@ const fetchClerkAuth = createServerFn({ method: "GET" }).handler(async () => {
   if (!userId) {
     return {};
   }
-  const response = await clerk.users.getUserOauthAccessToken(
-    userId,
-    "oauth_google"
-  );
+  const response = await clerk.users.getUserOauthAccessToken(userId, "google");
   const googleToken = response.data[0].token;
   return {
     userId,
