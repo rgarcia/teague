@@ -1,4 +1,6 @@
 **/*/.env
+.env.sst
+sst-env.d.ts
 # google cloud auth stuff
 packages/auth/credentials.json
 packages/auth/token.json
@@ -182,3 +184,6 @@ dist
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# sst
+.sst
