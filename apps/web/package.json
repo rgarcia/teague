@@ -4,7 +4,7 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev",
+    "dev": "vinxi dev --host",
     "prebuild": "patch -N ../../node_modules/@clerk/backend/package.json clerk-crypto.patch || true",
     "build": "vinxi build",
     "start": "bun run .output/server/index.mjs"
