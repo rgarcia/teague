@@ -1,10 +1,11 @@
 {
-  "name": "tanstack-start-example-clerk-basic",
+  "name": "web",
   "private": true,
   "sideEffects": false,
   "type": "module",
   "scripts": {
     "dev": "vinxi dev",
+    "prebuild": "patch -N ../../node_modules/@clerk/backend/package.json clerk-crypto.patch || true",
     "build": "vinxi build",
     "start": "vinxi start"
   },

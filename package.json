@@ -7,13 +7,21 @@
     "apps/web"
   ],
   "devDependencies": {
+    "@types/aws-lambda": "8.10.147",
     "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
-  "dependencies": {},
+  "dependencies": {
+    "sst": "3.8.3"
+  },
   "overrides": {
     "crossws": "0.2.4"
-  }
+  },
+  "trustedDependencies": [
+    "@clerk/shared",
+    "@parcel/watcher",
+    "protobufjs"
+  ]
 }
