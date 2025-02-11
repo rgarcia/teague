@@ -7,7 +7,7 @@
     "dev": "vinxi dev",
     "prebuild": "patch -N ../../node_modules/@clerk/backend/package.json clerk-crypto.patch || true",
     "build": "vinxi build",
-    "start": "vinxi start"
+    "start": "bun run .output/server/index.mjs"
   },
   "dependencies": {
     "@clerk/backend": "^1.23.11",
