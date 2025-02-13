@@ -44,8 +44,11 @@
 
     - name: Install dependencies and build
       shell: |
+        export BUN_INSTALL="/root/.bun"
+        export PATH="$BUN_INSTALL/bin:$PATH"
         cd /root/cannon/apps/web
-        /root/.bun/bin/bun install
+        bun install
+        bun run build
       args:
         executable: /bin/bash
       when: git_status.changed
@@ -70,7 +73,7 @@
           Environment=CLERK_PUBLISHABLE_KEY={{ clerk_publishable_key }}
           Environment=CLERK_SECRET_KEY={{ clerk_secret_key }}
           Environment=PORT=80
-          ExecStart=/root/.bun/bin/bun run dev
+          ExecStart=/root/.bun/bin/bun run .output/server/index.mjs
           Restart=always
 
           [Install]

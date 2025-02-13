@@ -1,6 +1,4 @@
 /// <reference path="./.sst/platform/config.d.ts" />
-import { createHash } from "crypto";
-import { readFileSync } from "fs";
 enum Stage {
   Prod = "prod",
   Dev = "dev",
@@ -11,13 +9,6 @@ function must(envVar: string): string {
   }
   return process.env[envVar]!;
 }
-
-// hashFile is useful for adding dummy env variables to commands so that
-// pulumi is tricked into running a command again when a file changes
-const hashFile = (filePath: string) => {
-  const content = readFileSync(filePath, "utf8");
-  return createHash("sha256").update(content).digest("hex");
-};
 
 export default $config({
   app(input) {
@@ -42,6 +33,10 @@ export default $config({
           version: "5.49.0",
           apiToken: must("CLOUDFLARE_API_TOKEN"),
         },
+        railway: {
+          version: "0.4.4",
+          token: must("RAILWAY_TOKEN"),
+        },
       },
     };
   },
@@ -49,39 +44,65 @@ export default $config({
     if ($app.stage !== Stage.Prod && $app.stage !== Stage.Dev) {
       throw new Error("Invalid stage");
     }
-
     const secrets = {
       clerk: {
         publishableKey: new sst.Secret("ClerkPublishableKey"),
         secretKey: new sst.Secret("ClerkSecretKey"),
       },
     };
-    const api = new sst.aws.ApiGatewayV2("Web");
-
-    const myFunction = new sst.aws.Function("MyFunction", {
-      url: true,
-      runtime: "nodejs22.x",
-      bundle: "apps/web/.output",
-      handler: "./server/index.mjs.handler",
-      environment: {
-        NODE_ENV: "production",
-        DEPLOY_ENV: $app.stage,
-        VITE_CLERK_PUBLISHABLE_KEY: secrets.clerk.publishableKey.value,
-        CLERK_PUBLISHABLE_KEY: secrets.clerk.publishableKey.value,
-        CLERK_SECRET_KEY: secrets.clerk.secretKey.value,
+    const vars = [
+      {
+        name: "CLERK_SECRET_KEY",
+        value: secrets.clerk.secretKey.value,
       },
+      {
+        name: "CLERK_PUBLISHABLE_KEY",
+        value: secrets.clerk.publishableKey.value,
+      },
+      {
+        name: "VITE_CLERK_PUBLISHABLE_KEY",
+        value: secrets.clerk.publishableKey.value,
+      },
+    ];
+
+    const web = new railway.Service("web", {
+      name: "web",
+      configPath: "infra/web/railway.json",
+      projectId: "882a6cf1-941e-4e94-a6b8-58cad52a1908",
+      sourceRepo: "rgarcia/teague",
+      sourceRepoBranch: "main",
+      region: "us-west2",
+      numReplicas: 1,
     });
-    // api.route("$default", {
-    //   handler: "apps/web/.output/server/index.mjs",
-    //   runtime: "nodejs22.x",
-    //   environment: {
-    //     NODE_ENV: "production",
-    //     DEPLOY_ENV: $app.stage,
-    //     VITE_CLERK_PUBLISHABLE_KEY: secrets.clerk.publishableKey.value,
-    //     CLERK_PUBLISHABLE_KEY: secrets.clerk.publishableKey.value,
-    //     CLERK_SECRET_KEY: secrets.clerk.secretKey.value,
-    //   },
-    // });
-    return { api };
+    const environmentId =
+      $app.stage === Stage.Prod
+        ? "df9b8b1d-913b-401d-9dfc-fcac5038c728"
+        : "a17c7b31-aa1b-450c-b50c-429bc84add7e";
+    let envVars: Record<string, railway.Variable> = {};
+    for (const v of vars) {
+      envVars[v.name] = new railway.Variable(`web-${v.name}`, {
+        name: v.name,
+        value: v.value,
+        environmentId,
+        serviceId: web.id,
+      });
+    }
+
+    const domain = `${$app.stage}--web.raf.xyz`;
+    const customDomain = new railway.CustomDomain("web", {
+      domain,
+      environmentId,
+      serviceId: web.id,
+    });
+    const dns = new cloudflare.Record("web", {
+      name: domain,
+      type: "CNAME",
+      zoneId: must("CLOUDFLARE_ZONE_ID"),
+      proxied: true,
+      value: customDomain.dnsRecordValue,
+      comment: "Set via SST",
+    });
+
+    return { web, envVars, domain };
   },
 });

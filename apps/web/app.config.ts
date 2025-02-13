@@ -7,8 +7,8 @@ export default defineConfig({
     server: {
       allowedHosts: [
         "raf--cannon.ngrok.app",
-        "dev--cannon-web.raf.xyz",
-        "cannon-web.raf.xyz",
+        "dev--web.raf.xyz",
+        "prod--web.raf.xyz",
       ],
     },
     plugins: [
