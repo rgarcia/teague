@@ -1,6 +1,5 @@
 import { Link, Outlet, createFileRoute } from "@tanstack/react-router";
 import { fetchPosts } from "~/utils/posts.js";
-import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/_authed/posts")({
   loader: async ({ context }) => {
@@ -14,30 +13,6 @@ export const Route = createFileRoute("/_authed/posts")({
 
 function PostsComponent() {
   const loaderData = Route.useLoaderData();
-  const [emailData, setEmailData] = useState<any>(null);
-
-  useEffect(() => {
-    const fetchEmail = async () => {
-      try {
-        const response = await fetch("/api/gmail/next-email", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            maxResults: 1,
-            q: "in:inbox",
-          }),
-        });
-        const data = await response.json();
-        setEmailData(data);
-      } catch (error) {
-        console.error("Error fetching email:", error);
-      }
-    };
-
-    fetchEmail();
-  }, []);
 
   return (
     <div className="p-2 flex gap-2">
@@ -49,13 +24,6 @@ function PostsComponent() {
         {/* Email Data Display */}
         <div className="border p-4 rounded-lg">
           <h2 className="font-bold mb-2">Next Email:</h2>
-          {emailData ? (
-            <pre className="whitespace-pre-wrap">
-              {JSON.stringify(emailData, null, 2)}
-            </pre>
-          ) : (
-            <p>Loading email data...</p>
-          )}
         </div>
 
         <ul className="list-disc pl-4">
