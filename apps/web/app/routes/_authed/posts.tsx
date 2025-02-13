@@ -1,7 +1,5 @@
 import { Link, Outlet, createFileRoute } from "@tanstack/react-router";
 import { fetchPosts } from "~/utils/posts.js";
-import { gmail_v1, google } from "googleapis";
-import { OAuth2Client } from "google-auth-library";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/_authed/posts")({

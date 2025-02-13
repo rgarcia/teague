@@ -1,0 +1,9 @@
+node_modules
+apps/mobile
+apps/web/.output
+.env
+.sst
+.env.sst
+.git
+.gitignore
+.archive

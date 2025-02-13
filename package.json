@@ -2,8 +2,6 @@
   "name": "cannon",
   "type": "module",
   "workspaces": [
-    "packages/*",
-    "apps/cli",
     "apps/web"
   ],
   "devDependencies": {
@@ -16,12 +14,8 @@
   "dependencies": {
     "sst": "3.8.3"
   },
-  "overrides": {
-    "crossws": "0.2.4"
-  },
   "trustedDependencies": [
     "@clerk/shared",
-    "@parcel/watcher",
-    "protobufjs"
+    "@parcel/watcher"
   ]
 }

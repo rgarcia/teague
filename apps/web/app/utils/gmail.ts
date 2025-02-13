@@ -1,11 +1,11 @@
+import { gmail, gmail_v1 } from "@googleapis/gmail";
 import { OAuth2Client } from "google-auth-library";
-import { gmail_v1, google } from "googleapis";
 import TurndownService from "turndown";
 
 export const gmailClientForToken = (token: string) => {
   const auth = new OAuth2Client();
   auth.setCredentials({ access_token: token });
-  return google.gmail({ version: "v1", auth });
+  return gmail({ version: "v1", auth });
 };
 
 // Helper function to sanitize email content

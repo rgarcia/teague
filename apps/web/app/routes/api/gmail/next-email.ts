@@ -1,7 +1,7 @@
+import type { gmail_v1 } from "@googleapis/gmail";
 import { json } from "@tanstack/start";
 import { createAPIFileRoute } from "@tanstack/start/api";
 import type { Vapi } from "@vapi-ai/server-sdk";
-import type { gmail_v1 } from "googleapis";
 import { z } from "zod";
 import { sanitizeForSummary } from "../../../utils/gmail";
 import { createErrorResponse, validateVapiRequest } from "../../../utils/vapi";
