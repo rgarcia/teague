@@ -63,6 +63,10 @@ export default $config({
         name: "VITE_CLERK_PUBLISHABLE_KEY",
         value: secrets.clerk.publishableKey.value,
       },
+      {
+        name: "PORT",
+        value: "3000",
+      },
     ];
 
     const web = new railway.Service("web", {
@@ -94,6 +98,10 @@ export default $config({
       environmentId,
       serviceId: web.id,
     });
+    // this doesn't work because the dnsRecordValue that Railway passes back in the API is just... wrong?
+    // So go into the railway UI to do this :(
+    const dnsRecordValue =
+      $app.stage === Stage.Dev ? "" : "web-dev-b6db.up.railway.app";
     const dns = new cloudflare.Record("web", {
       name: domain,
       type: "CNAME",

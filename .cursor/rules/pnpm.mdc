@@ -1,0 +1,13 @@
+---
+description: pnpm things
+globs: *.ts,*.tsx,package.json
+---
+The project uses pnpm as the package manager.
+
+If adding any npm packages, never edit the package.json directly. Use `pnpm install` instead of `npm install`.  If adding a @types/* package, make sure to use `pnpm install -D` to add it to dev dependencies.
+
+Be careful to run `pnpm install` in the correct directory so that you are adding the dependency to the correct sub package. We have packages in packages/* and source code is usually in packages/*/src/*.
+
+If running a script in package.json, change to the directory of the package.json file and run `pnpm run <script name>`.
+
+If running a one-off script you can just do `pnpx tsx <path to script>`.

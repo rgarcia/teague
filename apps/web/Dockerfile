@@ -1,42 +1,19 @@
-# use the official Bun image
-# see all versions at https://hub.docker.com/r/oven/bun/tags
-FROM oven/bun:1.2.2 AS base
-WORKDIR /usr/src
+# riff on https://pnpm.io/docker#example-2-build-multiple-docker-images-in-a-monorepo
+FROM node:22-slim AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
 
-# install dependencies into temp directory
-# this will cache them and speed up future builds
-FROM base AS install
-RUN mkdir -p /temp/dev
-COPY package.json bun.lock /temp/dev/
-COPY apps/web/package.json /temp/dev/apps/web/package.json
-RUN cd /temp/dev && bun install --frozen-lockfile
+FROM base AS build
+COPY . /usr/src/app
+WORKDIR /usr/src/app
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN pnpm run -r build
+RUN pnpm deploy --filter=web --prod /prod/web
+COPY apps/web/.output /prod/web/.output
 
-# install with --production (exclude devDependencies)
-RUN mkdir -p /temp/prod
-COPY package.json bun.lock /temp/prod/
-COPY apps/web/package.json /temp/prod/apps/web/package.json
-RUN cd /temp/prod && bun install --frozen-lockfile --production
-
-# copy node_modules from temp directory
-# then copy all (non-ignored) project files into the image
-FROM base AS prerelease
-RUN apt-get update && apt-get install -y patch
-COPY --from=install /temp/dev/node_modules node_modules
-COPY . .
-
-# [optional] tests & build
-ENV NODE_ENV=production
-RUN cd apps/web && bun test
-RUN cd apps/web && bun run build
-
-# copy production dependencies and source code into final image
-FROM base AS release
-COPY --from=install /temp/prod/node_modules /usr/src/node_modules
-COPY --from=prerelease /usr/src/apps/web/.output /usr/src/apps/web/.output
-# COPY --from=prerelease /usr/src/app/package.json .
-
-# run the app
-WORKDIR /usr/src/apps/web
-USER bun
-EXPOSE 3000/tcp
-ENTRYPOINT [ "bun", "run", ".output/server/index.mjs" ]
+FROM base AS web
+COPY --from=build /prod/web /prod/web
+WORKDIR /prod/web
+EXPOSE 3000
+CMD [ "node", ".output/server/index.mjs" ]

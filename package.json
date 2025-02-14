@@ -1,6 +1,7 @@
 {
   "name": "cannon",
   "type": "module",
+  "packageManager": "pnpm@10.4.0",
   "workspaces": [
     "apps/web"
   ],
