@@ -7,7 +7,8 @@ RUN corepack enable
 FROM base AS build
 COPY . /usr/src/app
 WORKDIR /usr/src/app
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+# see https://docs.railway.com/guides/dockerfiles#cache-mounts
+RUN --mount=type=cache,id=s/01cbe423-33b0-4775-b082-1e0830896cd4-pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 RUN pnpm run -r build
 RUN pnpm deploy --filter=web --prod /prod/web
 COPY apps/web/.output /prod/web/.output
