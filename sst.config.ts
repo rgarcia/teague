@@ -65,7 +65,7 @@ export default $config({
       },
       {
         name: "PORT",
-        value: "3000",
+        value: "8080",
       },
     ];
 
@@ -93,24 +93,26 @@ export default $config({
     }
 
     const domain = `${$app.stage}--web.raf.xyz`;
-    const customDomain = new railway.CustomDomain("web", {
-      domain,
-      environmentId,
-      serviceId: web.id,
-    });
-    // this doesn't work because the dnsRecordValue that Railway passes back in the API is just... wrong?
-    // So go into the railway UI to do this :(
+    // const customDomain = new railway.CustomDomain("web", {
+    //   domain,
+    //   environmentId,
+    //   serviceId: web.id,
+    // });
+    // the above doesn't work because the dnsRecordValue that Railway passes back in the API is just... wrong?
+    // So go into the railway UI to do this and pull the values from there :(
     const dnsRecordValue =
-      $app.stage === Stage.Dev ? "" : "web-dev-b6db.up.railway.app";
+      $app.stage === Stage.Dev
+        ? "zgv62i8j.up.railway.app"
+        : "w217r27l.up.railway.app";
     const dns = new cloudflare.Record("web", {
       name: domain,
       type: "CNAME",
       zoneId: must("CLOUDFLARE_ZONE_ID"),
       proxied: true,
-      value: customDomain.dnsRecordValue,
+      value: dnsRecordValue,
       comment: "Set via SST",
     });
 
-    return { web, envVars, domain };
+    return { web, envVars, dns };
   },
 });
