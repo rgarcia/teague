@@ -4,7 +4,7 @@ import path from "path";
 const client = new VapiClient({ token: process.env.VAPI_API_KEY });
 
 const systemPrompt = readFileSync(
-  path.join(__dirname, "system-prompt.md"),
+  path.join("scripts", "system-prompt.md"),
   "utf-8"
 );
 
@@ -33,14 +33,15 @@ async function updateAssistant(toolIds: string[]) {
       ],
       toolIds: toolIds,
     },
-    firstMessage: "Hello, want to get to inbox zero today?",
+    //firstMessageMode: "assistant-speaks-first-with-model-generated-message",
+    firstMessage: "Let's go through  your inbox.",
     voicemailMessage: "Hey this is Ava, can you call me back when you're free?",
     endCallMessage: "I think that's all for now, good bye!",
     transcriber: {
       keywords: ["inbox", "email", "cannon"],
       provider: "deepgram",
       language: "en-US",
-      model: "nova-2-conversationalai",
+      model: "nova-2-general",
       smartFormat: true,
     },
     clientMessages: [
@@ -92,10 +93,15 @@ async function updateTools(): Promise<string[]> {
     }))
   );
 
-  const getNextEmailDef = {
+  const getNextEmailDef: Vapi.ToolsCreateRequest = {
     type: "function",
     async: false,
     messages: [
+      // See https://github.com/VapiAI/server-sdk-typescript/blob/main/src/api/types/CreateFunctionToolDtoMessagesItem.ts
+      {
+        type: "request-start" as const,
+        content: "",
+      },
       {
         type: "request-failed" as const,
         content:
@@ -105,7 +111,7 @@ async function updateTools(): Promise<string[]> {
         type: "request-response-delayed" as const,
         content:
           "It appears there is some delay in communication with the email API.",
-        timingMilliseconds: 2000,
+        timingMilliseconds: 10000,
       },
     ],
     server: {
@@ -135,20 +141,28 @@ async function updateTools(): Promise<string[]> {
     },
   };
 
-  const archiveEmailDef = {
+  const archiveEmailDef: Vapi.ToolsCreateRequest = {
     type: "function",
-    //    name: "ArchiveEmail",
     async: false,
     messages: [
+      {
+        type: "request-start" as const,
+        content: "",
+      },
       {
         type: "request-failed" as const,
         content:
           "I couldn't archive the email right now, please try again later.",
       },
+      // {
+      //   type: "request-complete",
+      //   content: "",
+      // },
       {
         type: "request-response-delayed" as const,
-        content: "It appears there is some delay in archiving the email.",
-        timingMilliseconds: 2000,
+        content:
+          "I'm having some trouble archiving this email right now--let's try again later.",
+        timingMilliseconds: 10000,
       },
     ],
     server: {
@@ -166,6 +180,53 @@ async function updateTools(): Promise<string[]> {
           },
         },
         required: ["messageId"],
+      },
+    },
+  };
+
+  const acceptInviteDef: Vapi.ToolsCreateRequest = {
+    type: "function",
+    async: false,
+    messages: [
+      {
+        type: "request-start" as const,
+        content: "",
+      },
+      {
+        type: "request-failed" as const,
+        content:
+          "I couldn't accept the invite right now, please try again later.",
+      },
+      // {
+      //   type: "request-complete",
+      //   content: "",
+      // },
+      {
+        type: "request-response-delayed" as const,
+        content:
+          "I'm having some trouble accepting this invite right now--let's try again later.",
+        timingMilliseconds: 10000,
+      },
+    ],
+    server: {
+      url: "https://raf--cannon.ngrok.app/api/gcal/accept-invite",
+    },
+    function: {
+      name: "AcceptInvite",
+      description: "Accept an invite to a calendar event.",
+      parameters: {
+        type: "object" as const,
+        properties: {
+          messageId: {
+            type: "string" as const,
+            description: "The ID of the message containing the invite",
+          },
+          eventId: {
+            type: "string" as const,
+            description: "The ID of the event to accept",
+          },
+        },
+        required: ["eventId", "messageId"],
       },
     },
   };
@@ -218,6 +279,32 @@ async function updateTools(): Promise<string[]> {
       server: archiveEmailDef.server,
     });
     console.log("Updated ArchiveEmail tool:", {
+      id: updated.id,
+      name: updated.function?.name,
+    });
+    toolIds.push(updated.id);
+  }
+
+  const acceptInvite = tools.find(
+    (tool) => tool.function?.name === "AcceptInvite"
+  );
+  if (!acceptInvite) {
+    const created = await client.tools.create(
+      acceptInviteDef as Vapi.ToolsCreateRequest
+    );
+    console.log("Created AcceptInvite tool:", {
+      id: created.id,
+      name: created.function?.name,
+    });
+    toolIds.push(created.id);
+  } else {
+    const updated = await client.tools.update(acceptInvite.id, {
+      async: acceptInviteDef.async,
+      function: acceptInviteDef.function,
+      messages: acceptInviteDef.messages,
+      server: acceptInviteDef.server,
+    });
+    console.log("Updated AcceptInvite tool:", {
       id: updated.id,
       name: updated.function?.name,
     });

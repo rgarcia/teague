@@ -1,3 +1,4 @@
+import React from "react";
 import {
   StyleSheet,
   Text,
@@ -267,8 +268,8 @@ const MessageItem = ({ message }: { message: CondensedMessage }) => {
             isError
               ? themedStyles.errorMessage
               : message.toolCall?.result
-              ? themedStyles.functionResultMessage
-              : themedStyles.functionCallMessage,
+                ? themedStyles.functionResultMessage
+                : themedStyles.functionCallMessage,
           ]}
         >
           <Text style={[themedStyles.messageRole, { textTransform: "none" }]}>
@@ -283,7 +284,7 @@ const MessageItem = ({ message }: { message: CondensedMessage }) => {
   }
 };
 
-export default function Index() {
+export default function Page() {
   const { toggleCall, callStatus, conversation, send } = useVapi();
   const { getToken } = useAuth();
   const colorScheme = useColorScheme() ?? "light";
@@ -322,7 +323,7 @@ export default function Index() {
   };
 
   const handleToggleCall = async () => {
-    const token = await getToken();
+    const token = await getToken({ template: "conversationtoken" });
     if (!token) {
       console.error("No token found");
       return;

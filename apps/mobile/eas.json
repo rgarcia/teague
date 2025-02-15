@@ -6,17 +6,22 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "environment": "development"
     },
     "preview": {
       "distribution": "internal",
+      "environment": "preview"
+    },
+    "preview-simulator": {
+      "environment": "preview",
       "ios": {
-        "simulator": true,
-        "cocoapods": "1.16.2"
+        "simulator": true
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "environment": "production"
     }
   },
   "submit": {

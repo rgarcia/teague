@@ -16,9 +16,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "ai.cannon.mobile",
       "infoPlist": {
-        "UIBackgroundModes": [
-          "voip"
-        ],
+        "UIBackgroundModes": ["voip"],
         "NSMicrophoneUsageDescription": "Cannon needs microphone access to work"
       },
       "bitcode": false
@@ -60,6 +58,12 @@
           "ios": {
             "deploymentTarget": "13.4"
           }
+        }
+      ],
+      [
+        "expo-font",
+        {
+          "fonts": ["assets/fonts/SpaceMono-Regular.ttf"]
         }
       ]
     ],

@@ -6,14 +6,21 @@ export default function HomeLayout() {
       <Stack.Screen
         name="index"
         options={{
-          headerShown: false, // This hides the navigation header with "index" text
+          headerShown: false,
         }}
       />
       <Stack.Screen
         name="chat"
         options={{
-          headerBackTitle: " ", // This hides the back text on iOS
-          headerBackTitleVisible: false, // This also helps ensure no back text is shown
+          headerShown: true,
+          title: "Chat",
+        }}
+      />
+      <Stack.Screen
+        name="profile"
+        options={{
+          headerShown: true,
+          title: "Profile",
         }}
       />
     </Stack>
