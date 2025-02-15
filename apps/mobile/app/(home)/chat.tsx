@@ -5,11 +5,11 @@ import {
   View,
   Pressable,
   useColorScheme,
-  ScrollView,
   TextInput,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  FlatList,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useVapi, CALL_STATUS } from "@/hooks/useVapi";
@@ -290,7 +290,7 @@ export default function Page() {
   const colorScheme = useColorScheme() ?? "light";
   const themedStyles = styles[colorScheme];
   const [inputText, setInputText] = useState("");
-  const scrollViewRef = useRef<ScrollView>(null);
+  const flatListRef = useRef<FlatList>(null);
 
   const condensedMessages = useMemo(() => {
     if (!conversation?.messages) return [];
@@ -333,6 +333,10 @@ export default function Page() {
     });
   };
 
+  const renderItem = ({ item: message }: { item: CondensedMessage }) => (
+    <MessageItem message={message} />
+  );
+
   return (
     <SafeAreaView style={themedStyles.container} edges={[]}>
       <KeyboardAvoidingView
@@ -354,18 +358,23 @@ export default function Page() {
           </Pressable>
         </View>
 
-        <ScrollView
-          ref={scrollViewRef}
-          style={themedStyles.scrollView}
-          contentContainerStyle={themedStyles.scrollViewContent}
-          onContentSizeChange={() =>
-            scrollViewRef.current?.scrollToEnd({ animated: true })
-          }
-        >
-          {condensedMessages.map((message, index) => (
-            <MessageItem key={index} message={message} />
-          ))}
-        </ScrollView>
+        <FlatList
+          data={condensedMessages}
+          renderItem={renderItem}
+          keyExtractor={(_, index) => index.toString()}
+          contentContainerStyle={[
+            themedStyles.flatListContent,
+            { flexGrow: 1, justifyContent: "flex-end" },
+          ]}
+          style={themedStyles.flatList}
+          onContentSizeChange={() => {
+            // Scroll to bottom when new messages are added
+            if (flatListRef.current) {
+              flatListRef.current.scrollToEnd({ animated: true });
+            }
+          }}
+          ref={flatListRef}
+        />
 
         <View style={themedStyles.inputContainer}>
           <TextInput
@@ -525,6 +534,12 @@ const createThemedStyles = (theme: "light" | "dark") =>
     },
     loadingText: {
       opacity: 0.7,
+    },
+    flatList: {
+      flex: 1,
+    },
+    flatListContent: {
+      padding: 8,
     },
   });
 
