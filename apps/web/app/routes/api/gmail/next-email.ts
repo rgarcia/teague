@@ -3,8 +3,8 @@ import { json } from "@tanstack/start";
 import { createAPIFileRoute } from "@tanstack/start/api";
 import type { Vapi } from "@vapi-ai/server-sdk";
 import { z } from "zod";
-import { sanitizeForSummary } from "../../../utils/gmail";
-import { createErrorResponse, validateVapiRequest } from "../../../utils/vapi";
+import { gmailClientForToken, sanitizeForSummary } from "~/utils/gmail";
+import { createErrorResponse, validateVapiRequest } from "~/utils/vapi";
 
 const config = {
   endpoint: "/api/gmail/next-email",
@@ -56,7 +56,10 @@ const HEADER_MAPPING = {
   unsubscribe: "unsubscribe",
 } as const;
 
-function extractEmailContent(message: gmail_v1.Schema$Message) {
+async function extractEmailContent(
+  gmailClient: gmail_v1.Gmail,
+  message: gmail_v1.Schema$Message
+) {
   const headers = message.payload?.headers || [];
   const getHeaderValue = (name: string) => {
     const value = headers.find(
@@ -76,7 +79,7 @@ function extractEmailContent(message: gmail_v1.Schema$Message) {
     references: getHeaderValue("references"),
     contentType: getHeaderValue("content-type"),
     unsubscribe: getHeaderValue("unsubscribe"),
-    body: sanitizeForSummary(message),
+    body: await sanitizeForSummary(message, gmailClient),
     snippet: message.snippet ?? undefined,
   };
   return content;
@@ -89,7 +92,8 @@ export const APIRoute = createAPIFileRoute(config.endpoint)({
       if (validationResult instanceof Response) {
         return validationResult;
       }
-      const { gmail, toolCalls } = validationResult;
+      const { googleToken, toolCalls } = validationResult;
+      const gmail = gmailClientForToken(googleToken);
 
       const results: Vapi.ToolCallResult[] = [];
       for (const toolCall of toolCalls) {
@@ -141,7 +145,7 @@ export const APIRoute = createAPIFileRoute(config.endpoint)({
 
           const response: NextEmailResponse = {
             id: messageRes.data.id!,
-            content: extractEmailContent(messageRes.data),
+            content: await extractEmailContent(gmail, messageRes.data),
             nextPageToken: res.data.nextPageToken ?? undefined,
           };
 

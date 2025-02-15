@@ -2,22 +2,23 @@ import { json } from "@tanstack/start";
 import { createAPIFileRoute } from "@tanstack/start/api";
 import type { Vapi } from "@vapi-ai/server-sdk";
 import { z } from "zod";
-import { gmailClientForToken } from "~/utils/gmail";
-import { createErrorResponse, validateVapiRequest } from "../../../utils/vapi";
+import { acceptInvite } from "~/utils/gcal.serverfns";
+import { archiveEmail } from "~/utils/gmail.serverfns";
+import { createErrorResponse, validateVapiRequest } from "~/utils/vapi";
 
 const config = {
-  endpoint: "/api/gmail/archive",
-  toolName: "ArchiveEmail",
+  endpoint: "/api/gcal/accept-invite",
+  toolName: "AcceptInvite",
   parameters: z.object({
-    messageId: z.string().describe("The ID of the message to archive"),
+    messageId: z
+      .string()
+      .describe("The ID of the message containing the invite"),
+    eventId: z.string().describe("The ID of the event to accept"),
   }),
   response: z.object({
     success: z.boolean(),
-    messageId: z.string(),
   }),
 };
-
-type ArchiveEmailResponse = z.infer<typeof config.response>;
 
 export const APIRoute = createAPIFileRoute(config.endpoint)({
   POST: async ({ request }) => {
@@ -26,9 +27,8 @@ export const APIRoute = createAPIFileRoute(config.endpoint)({
       if (validationResult instanceof Response) {
         return validationResult;
       }
-      const { googleToken, toolCalls } = validationResult;
-      const gmail = gmailClientForToken(googleToken);
-
+      const { toolCalls } = validationResult;
+      console.log("toolCalls", JSON.stringify(toolCalls, null, 2));
       const results: Vapi.ToolCallResult[] = [];
       for (const toolCall of toolCalls) {
         if (
@@ -50,51 +50,41 @@ export const APIRoute = createAPIFileRoute(config.endpoint)({
           continue;
         }
 
-        const { messageId } = parseResult.data;
+        const { messageId, eventId } = parseResult.data;
 
         try {
-          const res = await gmail.users.messages.modify({
-            userId: "me",
-            id: messageId,
-            requestBody: {
-              removeLabelIds: ["INBOX"],
-            },
-          });
-
-          if (res.status !== 200) {
-            results.push({
-              name: config.toolName,
-              toolCallId: toolCall.id,
-              error: `Failed to archive message: ${res.statusText}`,
-            });
-            continue;
-          }
-
-          const response: ArchiveEmailResponse = {
-            success: true,
-            messageId,
-          };
-
+          await Promise.all([
+            archiveEmail({
+              data: {
+                googleToken: validationResult.googleToken,
+                messageId,
+              },
+            }),
+            acceptInvite({
+              data: {
+                googleToken: validationResult.googleToken,
+                eventId,
+              },
+            }),
+          ]);
           results.push({
             name: config.toolName,
             toolCallId: toolCall.id,
-            result: JSON.stringify(response),
+            result: JSON.stringify({ success: true }),
           });
         } catch (error) {
           results.push({
             name: config.toolName,
             toolCallId: toolCall.id,
-            error: `Failed to archive message: ${error}`,
+            error: `Failed to accept invite: ${error}`,
           });
         }
       }
-
       return json({
         messageResponse: { results },
       });
     } catch (error) {
-      console.error("Error processing tool calls:", error);
-      return createErrorResponse(`Failed to process tool calls: ${error}`, 500);
+      return createErrorResponse(`Server error: ${error}`, 500);
     }
   },
 });

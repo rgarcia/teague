@@ -60,7 +60,7 @@ export default function OAuthButtons() {
 
     try {
       const { createdSessionId, setActive } = await startOAuthFlow({
-        redirectUrl: Linking.createURL("/profile", { scheme: "myapp" }),
+        redirectUrl: Linking.createURL("/profile", { scheme: "cannon" }),
       });
 
       if (createdSessionId) {

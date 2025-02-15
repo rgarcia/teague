@@ -4,6 +4,7 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
+    "test": "jest",
     "dev": "vinxi dev --host",
     "build": "vinxi build",
     "start": "vinxi start --preset node-server"
@@ -11,6 +12,7 @@
   "dependencies": {
     "@clerk/backend": "1.24.1",
     "@clerk/tanstack-start": "0.9.6",
+    "@googleapis/calendar": "^9.7.9",
     "@googleapis/gmail": "^12.0.0",
     "@tanstack/react-router": "^1.104.1",
     "@tanstack/router-devtools": "1.104.3",
@@ -26,13 +28,16 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.14",
     "@types/node": "^22.13.1",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@types/turndown": "^5.0.5",
     "autoprefixer": "^10.4.20",
+    "jest": "^29.7.0",
     "postcss": "^8.5.2",
     "tailwindcss": "^3.4.17",
+    "ts-jest": "^29.2.5",
     "typescript": "^5.7.3",
     "vite-tsconfig-paths": "^5.1.4"
   }
