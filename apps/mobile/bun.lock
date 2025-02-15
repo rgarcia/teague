@@ -31,6 +31,7 @@
         "react-native-background-timer": "^2.4.1",
         "react-native-gesture-handler": "~2.16.1",
         "react-native-get-random-values": "^1.11.0",
+        "react-native-keyboard-controller": "^1.16.3",
         "react-native-otp-entry": "^1.8.2",
         "react-native-reanimated": "~3.10.1",
         "react-native-safe-area-context": "^5.2.0",
@@ -1824,6 +1825,10 @@
     "react-native-get-random-values": ["react-native-get-random-values@1.11.0", "", { "dependencies": { "fast-base64-decode": "^1.0.0" }, "peerDependencies": { "react-native": ">=0.56" } }, "sha512-4BTbDbRmS7iPdhYLRcz3PGFIpFJBwNZg9g42iwa2P6FOv9vZj/xJc678RZXnLNZzd0qd7Q3CCF6Yd+CU2eoXKQ=="],
 
     "react-native-helmet-async": ["react-native-helmet-async@2.0.4", "", { "dependencies": { "invariant": "^2.2.4", "react-fast-compare": "^3.2.2", "shallowequal": "^1.1.0" }, "peerDependencies": { "react": "^16.6.0 || ^17.0.0 || ^18.0.0" } }, "sha512-m3CkXWss6B1dd6mCMleLpzDCJJGGaHOLQsUzZv8kAASJmMfmVT4d2fx375iXKTRWT25ThBfae3dECuX5cq/8hg=="],
+
+    "react-native-is-edge-to-edge": ["react-native-is-edge-to-edge@1.1.6", "", { "peerDependencies": { "react": ">=18.2.0", "react-native": ">=0.73.0" } }, "sha512-1pHnFTlBahins6UAajXUqeCOHew9l9C2C8tErnpGC3IyLJzvxD+TpYAixnCbrVS52f7+NvMttbiSI290XfwN0w=="],
+
+    "react-native-keyboard-controller": ["react-native-keyboard-controller@1.16.3", "", { "dependencies": { "react-native-is-edge-to-edge": "^1.1.6" }, "peerDependencies": { "react": "*", "react-native": "*", "react-native-reanimated": ">=3.0.0" } }, "sha512-sIByh0F3Umt8kACAbe5LmXe1AjJOTrt4MW/CZCTK//qU6ZCKJy/s6YeRKQ+/CJ6ELl3Ch9qp6wbxFaA1zbfshA=="],
 
     "react-native-otp-entry": ["react-native-otp-entry@1.8.2", "", { "peerDependencies": { "react": "*", "react-native": "*" } }, "sha512-Ergs1fNpyp69oSrQ3k/PoolBpuutXruwhQDnEmX4xT3RnaZyo9lvcRsj2FafHanbFvghn/v3WcFRGU/GIhIMqQ=="],
 

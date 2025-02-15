@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -6,12 +6,16 @@ import {
   Pressable,
   useColorScheme,
   TextInput,
-  KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   FlatList,
+  Keyboard,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  KeyboardAwareScrollView,
+  KeyboardToolbar,
+} from "react-native-keyboard-controller";
 import { useVapi, CALL_STATUS } from "@/hooks/useVapi";
 import { Colors } from "@/constants/colors";
 import { useRef, useState, useMemo } from "react";
@@ -337,11 +341,25 @@ export default function Page() {
     <MessageItem message={message} />
   );
 
+  // scroll to bottom when keyboard is shown
+  useEffect(() => {
+    const keyboardShowListener = Keyboard.addListener("keyboardDidShow", () => {
+      if (flatListRef.current) {
+        flatListRef.current.scrollToEnd({ animated: true });
+      }
+    });
+    return () => {
+      keyboardShowListener.remove();
+    };
+  }, []);
+
   return (
     <SafeAreaView style={themedStyles.container} edges={[]}>
-      <KeyboardAvoidingView
-        style={themedStyles.keyboardAvoidingView}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      <KeyboardAwareScrollView
+        style={themedStyles.keyboardAware}
+        contentContainerStyle={themedStyles.keyboardAwareContent}
+        keyboardShouldPersistTaps="handled"
+        ScrollViewComponent={View} // we don't actually want it to scroll (the flatlist will do that)
       >
         <View style={themedStyles.header}>
           <Pressable
@@ -368,7 +386,6 @@ export default function Page() {
           ]}
           style={themedStyles.flatList}
           onContentSizeChange={() => {
-            // Scroll to bottom when new messages are added
             if (flatListRef.current) {
               flatListRef.current.scrollToEnd({ animated: true });
             }
@@ -395,7 +412,8 @@ export default function Page() {
             <Text style={themedStyles.sendButtonText}>↑</Text>
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
+      <KeyboardToolbar />
     </SafeAreaView>
   );
 }
@@ -406,8 +424,11 @@ const createThemedStyles = (theme: "light" | "dark") =>
       flex: 1,
       backgroundColor: Colors[theme].background,
     },
-    keyboardAvoidingView: {
+    keyboardAware: {
       flex: 1,
+    },
+    keyboardAwareContent: {
+      flexGrow: 1,
     },
     header: {
       padding: 16,
@@ -455,7 +476,7 @@ const createThemedStyles = (theme: "light" | "dark") =>
       flexDirection: "row",
       paddingHorizontal: 16,
       paddingTop: 16,
-      paddingBottom: 24,
+      paddingBottom: Platform.OS === "ios" ? 54 : 24,
     },
     input: {
       minHeight: 48,
