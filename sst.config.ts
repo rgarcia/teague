@@ -21,13 +21,6 @@ export default $config({
         aws: {
           profile: "personal", // TODO: change :)
         },
-        hcloud: {
-          version: "1.21.2",
-          token:
-            input?.stage === Stage.Prod
-              ? must("HCLOUD_TOKEN_PROD")
-              : must("HCLOUD_TOKEN_DEV"),
-        },
         command: "1.0.1",
         cloudflare: {
           version: "5.49.0",

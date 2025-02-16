@@ -8,6 +8,10 @@ const systemPrompt = readFileSync(
   "utf-8"
 );
 
+// when dev'ing locally. TODO: make a separate assistant + tools for this
+// const WEB_BASE_URL = "https://raf--cannon.ngrok.app";
+const WEB_BASE_URL = "https://prod--web.raf.xyz";
+
 async function updateAssistant(toolIds: string[]) {
   const assistants = await client.assistants.list();
   console.log(
@@ -115,7 +119,7 @@ async function updateTools(): Promise<string[]> {
       },
     ],
     server: {
-      url: "https://raf--cannon.ngrok.app/api/gmail/next-email",
+      url: `${WEB_BASE_URL}/api/gmail/next-email`,
     },
     function: {
       name: "GetNextEmail",
@@ -166,7 +170,7 @@ async function updateTools(): Promise<string[]> {
       },
     ],
     server: {
-      url: "https://raf--cannon.ngrok.app/api/gmail/archive",
+      url: `${WEB_BASE_URL}/api/gmail/archive`,
     },
     function: {
       name: "ArchiveEmail",
@@ -209,7 +213,7 @@ async function updateTools(): Promise<string[]> {
       },
     ],
     server: {
-      url: "https://raf--cannon.ngrok.app/api/gcal/accept-invite",
+      url: `${WEB_BASE_URL}/api/gcal/accept-invite`,
     },
     function: {
       name: "AcceptInvite",
