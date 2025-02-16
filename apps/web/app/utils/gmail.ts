@@ -142,15 +142,18 @@ async function processMessageParts(
       ) {
         continue;
       }
-      console.log(`Found attachment: ${part.filename} (${part.mimeType})`);
-      console.log(`Found attachment: ${part.filename} (${part.mimeType})`);
-      console.log(`Attachment ID: ${part.body.attachmentId}`);
-      console.log(`Size: ${part.body.size} bytes`);
-      const attachmentData = await getAttachmentData({
-        gmailClient,
-        messageId,
-        attachmentId: part.body.attachmentId,
-      });
+      // todo: whitelist attachments that are useful as text
+      // for now just don't get them
+      // console.log(`Found attachment: ${part.filename} (${part.mimeType})`);
+      // console.log(`Found attachment: ${part.filename} (${part.mimeType})`);
+      // console.log(`Attachment ID: ${part.body.attachmentId}`);
+      // console.log(`Size: ${part.body.size} bytes`);
+      // const attachmentData = await getAttachmentData({
+      //   gmailClient,
+      //   messageId,
+      //   attachmentId: part.body.attachmentId,
+      // });
+      const attachmentData = "";
       content +=
         (content ? "\n\n" : "") +
         `<attachment mimeType="${part.mimeType}" filename="${part.filename}" sizeBytes="${part.body.size}">${attachmentData}</attachment>`;
