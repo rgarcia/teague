@@ -38,16 +38,12 @@ export const acceptInviteConfig: BaseToolConfig<
 
     await Promise.all([
       archiveEmail({
-        data: {
-          googleToken: context.googleToken,
-          messageId,
-        },
+        googleToken: context.googleToken,
+        messageId,
       }),
       acceptInvite({
-        data: {
-          googleToken: context.googleToken,
-          eventId,
-        },
+        googleToken: context.googleToken,
+        eventId,
       }),
     ]);
 

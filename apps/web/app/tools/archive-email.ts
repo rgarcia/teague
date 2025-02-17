@@ -31,10 +31,8 @@ export const archiveEmailConfig: BaseToolConfig<
     }
 
     await archiveEmail({
-      data: {
-        googleToken: context.googleToken,
-        messageId,
-      },
+      googleToken: context.googleToken,
+      messageId,
     });
 
     return { success: true };

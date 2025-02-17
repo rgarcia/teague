@@ -1,8 +1,8 @@
 import { Link, Outlet, createFileRoute } from "@tanstack/react-router";
 import {
-  type FetchEmailsResponse,
-  type FetchEmails,
-  fetchEmails,
+  type FetchEmailsOutput,
+  type FetchEmailsInput,
+  fetchEmailsFn,
 } from "~/utils/gmail.serverfns";
 import { fetchPosts } from "~/utils/posts.js";
 
@@ -14,13 +14,13 @@ export const Route = createFileRoute("/_authed/posts")({
     return {
       context: context,
       posts: await fetchPosts(),
-      fetchEmails: (await fetchEmails({
+      fetchEmails: (await fetchEmailsFn({
         data: {
           googleToken: context.googleToken,
           query: "from:julieduncangarcia@gmail.com",
           maxResults: 10,
         },
-      })) as FetchEmailsResponse,
+      })) as FetchEmailsOutput,
     };
   },
   component: PostsComponent,

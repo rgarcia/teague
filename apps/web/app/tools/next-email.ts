@@ -59,12 +59,10 @@ export const nextEmailConfig: BaseToolConfig<
 
     try {
       const response = await fetchEmails({
-        data: {
-          googleToken: context.googleToken,
-          maxResults: 1,
-          query,
-          nextPageToken,
-        },
+        googleToken: context.googleToken,
+        maxResults: 1,
+        query,
+        nextPageToken,
       });
 
       if (!response || !response.emails) {
