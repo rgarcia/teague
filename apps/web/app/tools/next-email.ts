@@ -1,8 +1,8 @@
 import { z } from "zod";
 import {
-  emailBodyToMarkdown,
   fetchEmails,
   gmailClientForToken,
+  parseGmailEmail,
 } from "~/utils/gmail";
 import type { BaseToolConfig } from "~/utils/tools/registry";
 
@@ -17,21 +17,7 @@ const nextEmailSchema = z.object({
 type NextEmailOutput = {
   id: string;
   nextPageToken?: string;
-  content: {
-    bcc: string;
-    body: string;
-    cc: string;
-    contentType: string;
-    date: string;
-    from: string;
-    references: string;
-    replyTo: string;
-    snippet: string;
-    subject: string;
-    threadId: string;
-    to: string;
-    unsubscribe: string;
-  };
+  content: string;
 };
 
 export const nextEmailConfig: BaseToolConfig<
@@ -77,35 +63,23 @@ export const nextEmailConfig: BaseToolConfig<
       }
 
       const email = emails[0];
-      const headers = email.payload?.headers || [];
-      const getHeaderValue = (name: string) => {
-        const value = headers.find(
-          (h) => h.name?.toLowerCase() === name.toLowerCase()
-        )?.value;
-        return value ?? "";
-      };
+
+      // Get user's email address for determining sent status
+      const gmailClient = gmailClientForToken(context.googleToken);
+      const profile = await gmailClient.users.getProfile({
+        userId: "me",
+      });
+      const userEmail = profile.data.emailAddress;
+      if (!userEmail) {
+        throw new Error("Could not get user's email address");
+      }
+
+      const parsedEmail = await parseGmailEmail(email, gmailClient, userEmail);
 
       return {
         id: email.id ?? "",
         nextPageToken: nextPageTokenFromFetch,
-        content: {
-          bcc: getHeaderValue("bcc"),
-          body: await emailBodyToMarkdown(
-            gmailClientForToken(context.googleToken),
-            email
-          ),
-          cc: getHeaderValue("cc"),
-          contentType: getHeaderValue("content-type"),
-          date: getHeaderValue("date"),
-          from: getHeaderValue("from"),
-          references: getHeaderValue("references"),
-          replyTo: getHeaderValue("reply-to"),
-          snippet: email.snippet ?? "",
-          subject: getHeaderValue("subject"),
-          threadId: email.threadId ?? "",
-          to: getHeaderValue("to"),
-          unsubscribe: getHeaderValue("unsubscribe"),
-        },
+        content: parsedEmail.llmFormatted,
       };
     } catch (error) {
       console.error("Error in GetNextEmail tool:", error);

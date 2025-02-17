@@ -7,7 +7,11 @@ import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import Database from "libsql";
 import prompts from "prompts";
 import { encoding_for_model } from "tiktoken";
-import { emailBodyToMarkdown, gmailClientForToken } from "~/utils/gmail";
+import {
+  gmailClientForToken,
+  parseGmailEmail,
+  type ParsedGmailEmail,
+} from "~/utils/gmail";
 
 // Ensure we have the required environment variables
 for (const key of [
@@ -499,84 +503,6 @@ const tpuf = new Turbopuffer({
   baseUrl: "https://gcp-us-central1.turbopuffer.com",
 });
 
-// Cache for Gmail label IDs to names
-const labelCache = new Map<string, string>();
-
-// Function to get label name from ID, using cache
-async function getLabelName(
-  labelId: string,
-  gmailClient: gmail_v1.Gmail
-): Promise<string> {
-  // Return system labels as-is
-  if (!labelId.startsWith("Label_")) {
-    return labelId;
-  }
-
-  // Check cache first
-  const cachedName = labelCache.get(labelId);
-  if (cachedName) {
-    return cachedName;
-  }
-
-  try {
-    // Lookup label in Gmail API
-    const label = await gmailClient.users.labels.get({
-      userId: "me",
-      id: labelId,
-    });
-
-    const labelName = label.data.name || labelId;
-    // Cache the result
-    labelCache.set(labelId, labelName);
-    return labelName;
-  } catch (error) {
-    console.warn(`Failed to lookup label name for ${labelId}:`, error);
-    return labelId;
-  }
-}
-
-// Helper function to format email headers and content for embedding
-async function formatEmailForEmbedding(
-  headers: gmail_v1.Schema$MessagePartHeader[],
-  content: string,
-  syntheticHeaders: Record<string, string | string[]>
-): Promise<string> {
-  const headerMap = new Map(
-    headers.map((h) => [h.name?.toLowerCase() || "", h.value || ""])
-  );
-
-  const relevantHeaders = [
-    "date",
-    "subject",
-    "from",
-    "to",
-    "reply-to",
-    "cc",
-    "bcc",
-    "message-id",
-    "list-unsubscribe",
-    "list-unsubscribe-post",
-  ];
-
-  const formattedHeaders = relevantHeaders
-    .map((header) => {
-      const value = headerMap.get(header);
-      return value
-        ? `${header.charAt(0).toUpperCase() + header.slice(1)}: ${value}`
-        : null;
-    })
-    .filter(Boolean);
-
-  // Add synthetic headers
-  for (const [key, value] of Object.entries(syntheticHeaders)) {
-    formattedHeaders.push(
-      `${key}: ${Array.isArray(value) ? `[${value.join(", ")}]` : value}`
-    );
-  }
-
-  return `${formattedHeaders.join("\n")}\n\n${content}`;
-}
-
 // Helper function to average vectors
 function averageVectors(vectors: number[][]): number[] {
   const numVectors = vectors.length;
@@ -629,130 +555,7 @@ async function embedText(text: string): Promise<number[]> {
   }
 }
 
-// ParsedGmailEmail is a cleaned up version of the gmail email object.
-type ParsedGmailEmail = {
-  llmFormatted: string;
-  bodyWithoutThread: string;
-  headers: {
-    subject: string;
-    date: string;
-    to: string;
-    from: string;
-    cc: string;
-    bcc: string;
-    reply_to: string;
-  };
-  messageId: string;
-  threadId: string;
-  sent: boolean;
-  labels: string[];
-};
-
-// Function to clean and format email data
-async function parseGmailEmail(
-  email: gmail_v1.Schema$Message,
-  gmailClient: gmail_v1.Gmail,
-  userEmail: string
-): Promise<ParsedGmailEmail> {
-  const body = await emailBodyToMarkdown(gmailClient, email);
-
-  let lines = body.split("\n");
-  const filteredLines: string[] = [];
-  let skipRemainingLines = false;
-
-  // pull out lines with "<attachment" and add them back at the end
-  const attachments = lines.filter((line) => line.includes("<attachment"));
-  lines = lines.filter((line) => !line.includes("<attachment"));
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmedLine = line.trim();
-
-    // If we've already determined we should skip all remaining lines, continue skipping
-    if (skipRemainingLines) {
-      continue;
-    }
-
-    // Check if the current line is a forwarded message marker, email attribution, or a quoted line
-    const isRemovableLine =
-      isForwardedMessageMarker(line) ||
-      isEmailAttribution(line) ||
-      trimmedLine.startsWith(">");
-
-    // If this line is removable, check if *all* remaining lines are also removable
-    // This controls for cases where an email contains responses inline. If this is the case we actually don't want to remove this line
-    if (isRemovableLine) {
-      let allRemainingRemovable = true;
-      for (let j = i + 1; j < lines.length; j++) {
-        const nextLine = lines[j];
-        const nextTrimmedLine = nextLine.trim();
-        if (
-          nextTrimmedLine.length > 0 &&
-          !isForwardedMessageMarker(nextLine) &&
-          !isEmailAttribution(nextLine) &&
-          !nextTrimmedLine.startsWith(">")
-        ) {
-          allRemainingRemovable = false;
-          break;
-        }
-      }
-
-      // If all remaining lines are removable, enable skip mode
-      if (allRemainingRemovable) {
-        skipRemainingLines = true;
-        continue;
-      }
-    }
-
-    filteredLines.push(line);
-  }
-
-  filteredLines.push(...attachments);
-  const bodyWithoutThread = filteredLines.join("\n").trim();
-  const headers = email.payload?.headers || [];
-  const headerMap = new Map(
-    headers.map((h) => [h.name?.toLowerCase() || "", h.value || ""])
-  );
-
-  const subject = headerMap.get("subject") || "(no subject)";
-  const to = headerMap.get("to") || "";
-  const from = headerMap.get("from") || "";
-  const sent = from.includes(userEmail);
-  // Resolve label names
-  const labels = await Promise.all(
-    email.labelIds?.map((label) => getLabelName(label, gmailClient)) || []
-  );
-
-  const formattedEmail = await formatEmailForEmbedding(
-    headers,
-    bodyWithoutThread,
-    {
-      "Gmail-Message-ID": email.id!,
-      "Gmail-Thread-ID": email.threadId!,
-      Labels: labels,
-    }
-  );
-
-  return {
-    llmFormatted: formattedEmail,
-    bodyWithoutThread: bodyWithoutThread,
-    headers: {
-      subject,
-      date: headerMap.get("date") || "unknown date",
-      to,
-      from,
-      cc: headerMap.get("cc") || "",
-      bcc: headerMap.get("bcc") || "",
-      reply_to: headerMap.get("reply-to") || "",
-    },
-    messageId: email.id!,
-    threadId: email.threadId!,
-    sent,
-    labels,
-  };
-}
-
-// Function to get email vector embedding from cleaned data
+// Helper function to get email vector embedding from cleaned data
 async function embedEmail(cleanedEmail: ParsedGmailEmail): Promise<number[]> {
   return await embedText(cleanedEmail.llmFormatted);
 }
@@ -760,26 +563,6 @@ async function embedEmail(cleanedEmail: ParsedGmailEmail): Promise<number[]> {
 function setupEmailNamespace(userId: string): Namespace {
   const namespaceName = `email-index-${userId}`;
   return tpuf.namespace(namespaceName);
-}
-
-// Helper function to check if a line is an email attribution
-function isEmailAttribution(line: string): boolean {
-  const trimmedLine = line.trim();
-  // Match patterns like "On [date/time], [name] <email> wrote:"
-  return (
-    trimmedLine.startsWith("On ") &&
-    (trimmedLine.includes(" wrote:") || trimmedLine.includes(" wrote "))
-  );
-}
-
-// Helper function to check if a line indicates forwarded content
-function isForwardedMessageMarker(line: string): boolean {
-  const trimmedLine = line.trim().toLowerCase();
-  return (
-    trimmedLine.includes("forwarded message") ||
-    trimmedLine.startsWith("---------- forwarded message ----------") ||
-    trimmedLine.startsWith("begin forwarded message")
-  );
 }
 
 // Helper function to check if an email is an unsubscribe request
