@@ -57,52 +57,61 @@ export const nextEmailConfig: BaseToolConfig<
       throw new Error("Google token is required for this operation");
     }
 
-    const { emails, nextPageToken: nextPageTokenFromFetch } = await fetchEmails(
-      {
+    try {
+      const response = await fetchEmails({
         data: {
           googleToken: context.googleToken,
           maxResults: 1,
           query,
           nextPageToken,
         },
+      });
+
+      if (!response || !response.emails) {
+        throw new Error(`unexpected response from fetchEmails: ${response}`);
       }
-    );
+      const { emails, nextPageToken: nextPageTokenFromFetch } = response;
+      if (emails.length === 0) {
+        throw new Error("No emails found matching the query");
+      }
 
-    if (emails.length === 0) {
-      throw new Error("No emails found matching the query");
+      const email = emails[0];
+      const headers = email.payload?.headers || [];
+      const getHeaderValue = (name: string) => {
+        const value = headers.find(
+          (h) => h.name?.toLowerCase() === name.toLowerCase()
+        )?.value;
+        return value ?? "";
+      };
+
+      return {
+        id: email.id ?? "",
+        nextPageToken: nextPageTokenFromFetch,
+        content: {
+          bcc: getHeaderValue("bcc"),
+          body: await emailBodyToMarkdown(
+            gmailClientForToken(context.googleToken),
+            email
+          ),
+          cc: getHeaderValue("cc"),
+          contentType: getHeaderValue("content-type"),
+          date: getHeaderValue("date"),
+          from: getHeaderValue("from"),
+          references: getHeaderValue("references"),
+          replyTo: getHeaderValue("reply-to"),
+          snippet: email.snippet ?? "",
+          subject: getHeaderValue("subject"),
+          threadId: email.threadId ?? "",
+          to: getHeaderValue("to"),
+          unsubscribe: getHeaderValue("unsubscribe"),
+        },
+      };
+    } catch (error) {
+      console.error("Error in GetNextEmail tool:", error);
+      throw new Error(
+        `Failed to get next email: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
-
-    const email = emails[0];
-    const headers = email.payload?.headers || [];
-    const getHeaderValue = (name: string) => {
-      const value = headers.find(
-        (h) => h.name?.toLowerCase() === name.toLowerCase()
-      )?.value;
-      return value ?? "";
-    };
-
-    return {
-      id: email.id ?? "",
-      nextPageToken: nextPageTokenFromFetch,
-      content: {
-        bcc: getHeaderValue("bcc"),
-        body: await emailBodyToMarkdown(
-          gmailClientForToken(context.googleToken),
-          email
-        ),
-        cc: getHeaderValue("cc"),
-        contentType: getHeaderValue("content-type"),
-        date: getHeaderValue("date"),
-        from: getHeaderValue("from"),
-        references: getHeaderValue("references"),
-        replyTo: getHeaderValue("reply-to"),
-        snippet: email.snippet ?? "",
-        subject: getHeaderValue("subject"),
-        threadId: email.threadId ?? "",
-        to: getHeaderValue("to"),
-        unsubscribe: getHeaderValue("unsubscribe"),
-      },
-    };
   },
   messages: [
     {

@@ -3,8 +3,8 @@ import { createServerFn } from "@tanstack/start";
 import { gmailClientForToken } from "./gmail";
 
 export type FetchEmailsResponse = {
-  Email: gmail_v1.Schema$Message;
-  summary: string;
+  emails: gmail_v1.Schema$Message[];
+  nextPageToken?: string;
 };
 
 export type FetchEmails = {
@@ -21,33 +21,45 @@ export const fetchEmails = createServerFn({ method: "GET" })
   .handler(
     async ({
       data: { googleToken, query, maxResults, nextPageToken },
-    }): Promise<FetchEmailsResponse[]> => {
-      const gmailClient = gmailClientForToken(googleToken);
+    }): Promise<FetchEmailsResponse> => {
+      try {
+        const gmailClient = gmailClientForToken(googleToken);
 
-      // First, list the emails
-      const listRes = await gmailClient.users.messages.list({
-        userId: "me",
-        q: query,
-        maxResults: maxResults,
-        pageToken: nextPageToken,
-      });
+        // First, list the emails
+        const listRes = await gmailClient.users.messages.list({
+          userId: "me",
+          q: query,
+          maxResults: maxResults,
+          pageToken: nextPageToken,
+        });
 
-      // Then fetch full details for each email
-      const emails: gmail_v1.Schema$Message[] = await Promise.all(
-        (listRes.data.messages || []).map(async (message) => {
-          const fullEmail = await gmailClient.users.messages.get({
-            userId: "me",
-            id: message.id!,
-            format: "full",
-          });
-          return fullEmail.data;
-        })
-      );
+        if (!listRes.data) {
+          throw new Error("No data received from Gmail API");
+        }
 
-      return {
-        emails,
-        nextPageToken: listRes.data.nextPageToken,
-      };
+        // Then fetch full details for each email
+        const emails: gmail_v1.Schema$Message[] = await Promise.all(
+          (listRes.data.messages || []).map(async (message) => {
+            const fullEmail = await gmailClient.users.messages.get({
+              userId: "me",
+              id: message.id!,
+              format: "full",
+            });
+            return fullEmail.data;
+          })
+        );
+
+        return {
+          emails,
+          nextPageToken: listRes.data.nextPageToken ?? undefined,
+        };
+      } catch (error) {
+        console.error("Error in fetchEmails:", error);
+        // Re-throw with more context
+        throw new Error(
+          `Failed to fetch emails: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
     }
   );
 
