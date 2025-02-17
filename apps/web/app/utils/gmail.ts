@@ -55,6 +55,10 @@ export async function sanitizeForSummary(
   return content.trim();
 }
 
+function mimeTypeHtml(mimeType: string): boolean {
+  return mimeType === "text/html" || mimeType === "text/x-amp-html";
+}
+
 async function processMessageParts(
   parts: gmail_v1.Schema$MessagePart[],
   turndownService: TurndownService,
@@ -64,7 +68,7 @@ async function processMessageParts(
   let content = "";
 
   // First look for text/html parts and fallback to text/plain parts
-  const htmlParts = parts.filter((part) => part.mimeType === "text/html");
+  const htmlParts = parts.filter((part) => mimeTypeHtml(part.mimeType ?? ""));
   if (htmlParts.length > 0) {
     content += htmlParts
       .map((part) => {
@@ -110,11 +114,16 @@ async function processMessageParts(
   // Process remaining parts recursively if they are multipart/alternative
   for (const part of parts) {
     // skip already examined text/html and text/plain parts
-    if (part.mimeType === "text/html" || part.mimeType === "text/plain") {
+    if (mimeTypeHtml(part.mimeType ?? "") || part.mimeType === "text/plain") {
       continue;
     }
 
-    if (part.mimeType === "multipart/alternative" && part.parts) {
+    if (
+      (part.mimeType === "multipart/alternative" ||
+        part.mimeType === "multipart/mixed" ||
+        part.mimeType === "multipart/related") &&
+      part.parts
+    ) {
       const recursiveContent = await processMessageParts(
         part.parts,
         turndownService,
