@@ -1,9 +1,6 @@
 import { Link, Outlet, createFileRoute } from "@tanstack/react-router";
-import {
-  type FetchEmailsOutput,
-  type FetchEmailsInput,
-  fetchEmailsFn,
-} from "~/utils/gmail.serverfns";
+import { type FetchEmailsOutput, type FetchEmailsInput } from "~/utils/gmail";
+import { fetchEmailsFn } from "~/utils/gmail.serverfns";
 import { fetchPosts } from "~/utils/posts.js";
 
 export const Route = createFileRoute("/_authed/posts")({

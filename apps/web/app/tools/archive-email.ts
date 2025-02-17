@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { archiveEmail } from "~/utils/gmail.serverfns";
+import { archiveEmail } from "~/utils/gmail";
 import type { BaseToolConfig } from "~/utils/tools/registry";
 
 const archiveEmailSchema = z.object({
