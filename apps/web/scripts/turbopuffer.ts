@@ -124,7 +124,7 @@ program
             id: message.id!,
             format: "full",
           });
-          const cleanedEmail = await cleanGmailEmail(
+          const cleanedEmail = await parseGmailEmail(
             fullEmail.data,
             gmailClient,
             userEmail
@@ -132,11 +132,11 @@ program
 
           // Empty emails or unsubscribe emails are skipped
           if (
-            cleanedEmail.filteredContent.trim() === "" ||
+            cleanedEmail.bodyWithoutThread.trim() === "" ||
             isUnsubscribeEmail(
               cleanedEmail.headers.subject,
               cleanedEmail.headers.to,
-              cleanedEmail.filteredContent
+              cleanedEmail.bodyWithoutThread
             )
           ) {
             continue;
@@ -149,7 +149,7 @@ program
               subject: cleanedEmail.headers.subject,
               date: cleanedEmail.headers.date,
               to: cleanedEmail.headers.to,
-              content: cleanedEmail.filteredContent,
+              content: cleanedEmail.bodyWithoutThread,
               sent: cleanedEmail.sent,
               message_id: cleanedEmail.messageId,
               thread_id: cleanedEmail.threadId,
@@ -165,7 +165,7 @@ program
           // pause for an audit
           if (Math.random() * 100 < sampleRate) {
             console.log("=".repeat(80));
-            console.log(cleanedEmail.formattedEmail);
+            console.log(cleanedEmail.llmFormatted);
             console.log("=".repeat(80));
             console.log("\n");
             await promptToContinue(
@@ -307,7 +307,7 @@ program
         format: "full",
       });
 
-      const cleanedEmail = await cleanGmailEmail(
+      const cleanedEmail = await parseGmailEmail(
         fullEmail.data,
         gmailClient,
         userEmail
@@ -316,7 +316,7 @@ program
       console.log("=".repeat(80));
       console.log("Formatted Email:");
       console.log("=".repeat(80));
-      console.log(cleanedEmail.formattedEmail);
+      console.log(cleanedEmail.llmFormatted);
       console.log("\n");
       console.log("=".repeat(80));
       console.log("Headers:");
@@ -403,7 +403,7 @@ program
         format: "full",
       });
 
-      const cleanedEmail = await cleanGmailEmail(
+      const cleanedEmail = await parseGmailEmail(
         fullEmail.data,
         gmailClient,
         userEmail
@@ -414,7 +414,7 @@ program
 
       console.log("\nSearching for emails similar to:\n");
       console.log("=".repeat(80));
-      console.log(cleanedEmail.formattedEmail);
+      console.log(cleanedEmail.llmFormatted);
       console.log("=".repeat(80));
 
       // Pause for user to review the target email
@@ -629,10 +629,10 @@ async function embedText(text: string): Promise<number[]> {
   }
 }
 
-// Type for cleaned up email data
-type CleanedEmailData = {
-  formattedEmail: string;
-  filteredContent: string;
+// ParsedGmailEmail is a cleaned up version of the gmail email object.
+type ParsedGmailEmail = {
+  llmFormatted: string;
+  bodyWithoutThread: string;
   headers: {
     subject: string;
     date: string;
@@ -649,14 +649,14 @@ type CleanedEmailData = {
 };
 
 // Function to clean and format email data
-async function cleanGmailEmail(
+async function parseGmailEmail(
   email: gmail_v1.Schema$Message,
   gmailClient: gmail_v1.Gmail,
   userEmail: string
-): Promise<CleanedEmailData> {
-  const content = await emailBodyToMarkdown(gmailClient, email);
+): Promise<ParsedGmailEmail> {
+  const body = await emailBodyToMarkdown(gmailClient, email);
 
-  let lines = content.split("\n");
+  let lines = body.split("\n");
   const filteredLines: string[] = [];
   let skipRemainingLines = false;
 
@@ -708,7 +708,7 @@ async function cleanGmailEmail(
   }
 
   filteredLines.push(...attachments);
-  const filteredContent = filteredLines.join("\n").trim();
+  const bodyWithoutThread = filteredLines.join("\n").trim();
   const headers = email.payload?.headers || [];
   const headerMap = new Map(
     headers.map((h) => [h.name?.toLowerCase() || "", h.value || ""])
@@ -725,7 +725,7 @@ async function cleanGmailEmail(
 
   const formattedEmail = await formatEmailForEmbedding(
     headers,
-    filteredContent,
+    bodyWithoutThread,
     {
       "Gmail-Message-ID": email.id!,
       "Gmail-Thread-ID": email.threadId!,
@@ -734,8 +734,8 @@ async function cleanGmailEmail(
   );
 
   return {
-    formattedEmail,
-    filteredContent,
+    llmFormatted: formattedEmail,
+    bodyWithoutThread: bodyWithoutThread,
     headers: {
       subject,
       date: headerMap.get("date") || "unknown date",
@@ -753,8 +753,8 @@ async function cleanGmailEmail(
 }
 
 // Function to get email vector embedding from cleaned data
-async function embedEmail(cleanedEmail: CleanedEmailData): Promise<number[]> {
-  return await embedText(cleanedEmail.formattedEmail);
+async function embedEmail(cleanedEmail: ParsedGmailEmail): Promise<number[]> {
+  return await embedText(cleanedEmail.llmFormatted);
 }
 
 function setupEmailNamespace(userId: string): Namespace {
