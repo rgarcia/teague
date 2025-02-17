@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { acceptInvite } from "~/utils/gcal.serverfns";
-import { archiveEmail } from "~/utils/gmail.serverfns";
+import { acceptInvite } from "~/utils/gcal";
+import { archiveEmail } from "~/utils/gmail";
 import type { BaseToolConfig } from "~/utils/tools/registry";
 
 const acceptInviteSchema = z.object({

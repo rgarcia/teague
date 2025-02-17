@@ -1,6 +1,9 @@
 import { z } from "zod";
-import { emailBodyToMarkdown, gmailClientForToken } from "~/utils/gmail";
-import { fetchEmails } from "~/utils/gmail.serverfns";
+import {
+  emailBodyToMarkdown,
+  fetchEmails,
+  gmailClientForToken,
+} from "~/utils/gmail";
 import type { BaseToolConfig } from "~/utils/tools/registry";
 
 const nextEmailSchema = z.object({
