@@ -1,6 +1,6 @@
 import { Link, Outlet, createFileRoute } from "@tanstack/react-router";
 import {
-  type Email,
+  type FetchEmailsResponse,
   type FetchEmails,
   fetchEmails,
 } from "~/utils/gmail.serverfns";
@@ -14,13 +14,13 @@ export const Route = createFileRoute("/_authed/posts")({
     return {
       context: context,
       posts: await fetchPosts(),
-      emails: (await fetchEmails({
+      fetchEmails: (await fetchEmails({
         data: {
           googleToken: context.googleToken,
           query: "from:julieduncangarcia@gmail.com",
           maxResults: 10,
         },
-      })) as Email[],
+      })) as FetchEmailsResponse,
     };
   },
   component: PostsComponent,
@@ -65,7 +65,7 @@ function PostsComponent() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {loaderData.emails.map(({ raw: email, summary }) => (
+              {loaderData.fetchEmails.emails.map((email) => (
                 <tr key={email.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {email.id}
@@ -105,11 +105,11 @@ function PostsComponent() {
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
+                  {/* <td className="px-6 py-4 text-sm text-gray-500">
                     <div className="max-h-40 max-w-md overflow-auto whitespace-pre-wrap">
                       {summary}
                     </div>
-                  </td>
+                  </td> */}
                   <td className="px-6 py-4 text-sm text-gray-500 font-mono">
                     {email.payload?.body?.data
                       ? Buffer.from(email.payload.body.data, "base64").toString(

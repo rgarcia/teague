@@ -1,9 +1,9 @@
 import type { gmail_v1 } from "@googleapis/gmail";
 import { createServerFn } from "@tanstack/start";
-import { gmailClientForToken, sanitizeForSummary } from "./gmail";
+import { gmailClientForToken } from "./gmail";
 
-export type Email = {
-  raw: gmail_v1.Schema$Message;
+export type FetchEmailsResponse = {
+  Email: gmail_v1.Schema$Message;
   summary: string;
 };
 
@@ -11,6 +11,7 @@ export type FetchEmails = {
   googleToken: string;
   query: string;
   maxResults: number;
+  nextPageToken?: string;
 };
 
 export const fetchEmails = createServerFn({ method: "GET" })
@@ -18,7 +19,9 @@ export const fetchEmails = createServerFn({ method: "GET" })
     return input as FetchEmails;
   })
   .handler(
-    async ({ data: { googleToken, query, maxResults } }): Promise<Email[]> => {
+    async ({
+      data: { googleToken, query, maxResults, nextPageToken },
+    }): Promise<FetchEmailsResponse[]> => {
       const gmailClient = gmailClientForToken(googleToken);
 
       // First, list the emails
@@ -26,25 +29,25 @@ export const fetchEmails = createServerFn({ method: "GET" })
         userId: "me",
         q: query,
         maxResults: maxResults,
+        pageToken: nextPageToken,
       });
 
       // Then fetch full details for each email
-      const emails = await Promise.all(
+      const emails: gmail_v1.Schema$Message[] = await Promise.all(
         (listRes.data.messages || []).map(async (message) => {
           const fullEmail = await gmailClient.users.messages.get({
             userId: "me",
             id: message.id!,
             format: "full",
           });
-          const summary = await sanitizeForSummary(fullEmail.data, gmailClient);
-          return {
-            raw: fullEmail.data,
-            summary,
-          };
+          return fullEmail.data;
         })
       );
 
-      return emails;
+      return {
+        emails,
+        nextPageToken: listRes.data.nextPageToken,
+      };
     }
   );
 

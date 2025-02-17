@@ -9,9 +9,9 @@ export function gmailClientForToken(token: string): gmail_v1.Gmail {
 }
 
 // Helper function to sanitize email content for LLMs
-export async function sanitizeForSummary(
-  message: gmail_v1.Schema$Message,
-  gmailClient: gmail_v1.Gmail
+export async function emailBodyToMarkdown(
+  gmailClient: gmail_v1.Gmail,
+  message: gmail_v1.Schema$Message
 ): Promise<string> {
   const turndownService = new TurndownService();
 

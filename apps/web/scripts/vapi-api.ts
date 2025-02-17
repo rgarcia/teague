@@ -1,6 +1,12 @@
-import { Vapi, VapiClient } from "@vapi-ai/server-sdk";
-import { readFileSync } from "fs";
+import { VapiClient } from "@vapi-ai/server-sdk";
+import { mkdirSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
+import { acceptInviteConfig } from "~/tools/accept-invite";
+import { archiveEmailConfig } from "~/tools/archive-email";
+import { nextEmailConfig } from "~/tools/next-email";
+import { ToolRegistryManager } from "~/utils/tools/registry";
+import { createVapiToolDefinition } from "~/utils/tools/vapi-adapter";
+
 const client = new VapiClient({ token: process.env.VAPI_API_KEY });
 
 const systemPrompt = readFileSync(
@@ -11,6 +17,35 @@ const systemPrompt = readFileSync(
 // when dev'ing locally. TODO: make a separate assistant + tools for this
 // const WEB_BASE_URL = "https://raf--cannon.ngrok.app";
 const WEB_BASE_URL = "https://prod--web.raf.xyz";
+
+// Create and populate the registry
+// Add more tools here as they are created
+const registry = new ToolRegistryManager();
+registry.registerTool(acceptInviteConfig);
+registry.registerTool(archiveEmailConfig);
+registry.registerTool(nextEmailConfig);
+
+async function dumpState(timestamp: string, prefix: string) {
+  const tools = await client.tools.list();
+  const assistants = await client.assistants.list();
+  const teague = assistants.find((assistant) => assistant.name === "Teague");
+
+  // Create dumps directory if it doesn't exist
+  const dumpsDir = path.join("scripts", "dumps", timestamp);
+  mkdirSync(dumpsDir, { recursive: true });
+
+  // Dump tools
+  writeFileSync(
+    path.join(dumpsDir, `${prefix}-tools.json`),
+    JSON.stringify(tools, null, 2)
+  );
+
+  // Dump assistant
+  writeFileSync(
+    path.join(dumpsDir, `${prefix}-assistant.json`),
+    JSON.stringify(teague, null, 2)
+  );
+}
 
 async function updateAssistant(toolIds: string[]) {
   const assistants = await client.assistants.list();
@@ -97,230 +132,48 @@ async function updateTools(): Promise<string[]> {
     }))
   );
 
-  const getNextEmailDef: Vapi.ToolsCreateRequest = {
-    type: "function",
-    async: false,
-    messages: [
-      // See https://github.com/VapiAI/server-sdk-typescript/blob/main/src/api/types/CreateFunctionToolDtoMessagesItem.ts
-      {
-        type: "request-start" as const,
-        content: "",
-      },
-      {
-        type: "request-failed" as const,
-        content:
-          "I couldn't get the email information right now, please try again later.",
-      },
-      {
-        type: "request-response-delayed" as const,
-        content:
-          "It appears there is some delay in communication with the email API.",
-        timingMilliseconds: 10000,
-      },
-    ],
-    server: {
-      url: `${WEB_BASE_URL}/api/gmail/next-email`,
-    },
-    function: {
-      name: "GetNextEmail",
-      description: "Gather the next email up for review from the user's inbox.",
-      parameters: {
-        type: "object" as const,
-        properties: {
-          maxResults: {
-            type: "number" as const,
-            description: "The maximum number of emails to return",
-          },
-          query: {
-            type: "string" as const,
-            description: "The email query to use. E.g., 'in:inbox'",
-          },
-          pageToken: {
-            type: "string" as const,
-            description: "The page token to use for pagination",
-          },
-        },
-        required: ["maxResults", "query"],
-      },
-    },
-  };
-
-  const archiveEmailDef: Vapi.ToolsCreateRequest = {
-    type: "function",
-    async: false,
-    messages: [
-      {
-        type: "request-start" as const,
-        content: "",
-      },
-      {
-        type: "request-failed" as const,
-        content:
-          "I couldn't archive the email right now, please try again later.",
-      },
-      // {
-      //   type: "request-complete",
-      //   content: "",
-      // },
-      {
-        type: "request-response-delayed" as const,
-        content:
-          "I'm having some trouble archiving this email right now--let's try again later.",
-        timingMilliseconds: 10000,
-      },
-    ],
-    server: {
-      url: `${WEB_BASE_URL}/api/gmail/archive`,
-    },
-    function: {
-      name: "ArchiveEmail",
-      description: "Archive a specific email from the user's inbox.",
-      parameters: {
-        type: "object" as const,
-        properties: {
-          messageId: {
-            type: "string" as const,
-            description: "The ID of the message to archive",
-          },
-        },
-        required: ["messageId"],
-      },
-    },
-  };
-
-  const acceptInviteDef: Vapi.ToolsCreateRequest = {
-    type: "function",
-    async: false,
-    messages: [
-      {
-        type: "request-start" as const,
-        content: "",
-      },
-      {
-        type: "request-failed" as const,
-        content:
-          "I couldn't accept the invite right now, please try again later.",
-      },
-      // {
-      //   type: "request-complete",
-      //   content: "",
-      // },
-      {
-        type: "request-response-delayed" as const,
-        content:
-          "I'm having some trouble accepting this invite right now--let's try again later.",
-        timingMilliseconds: 10000,
-      },
-    ],
-    server: {
-      url: `${WEB_BASE_URL}/api/gcal/accept-invite`,
-    },
-    function: {
-      name: "AcceptInvite",
-      description: "Accept an invite to a calendar event.",
-      parameters: {
-        type: "object" as const,
-        properties: {
-          messageId: {
-            type: "string" as const,
-            description: "The ID of the message containing the invite",
-          },
-          eventId: {
-            type: "string" as const,
-            description: "The ID of the event to accept",
-          },
-        },
-        required: ["eventId", "messageId"],
-      },
-    },
-  };
-
   const toolIds: string[] = [];
+  const registeredTools = registry.getAllTools();
 
-  const getNextEmail = tools.find(
-    (tool) => tool.function?.name === "GetNextEmail"
-  );
-  if (!getNextEmail) {
-    const created = await client.tools.create(
-      getNextEmailDef as Vapi.ToolsCreateRequest
-    );
-    console.log("Created GetNextEmail tool:", {
-      id: created.id,
-      name: created.function?.name,
-    });
-    toolIds.push(created.id);
-  } else {
-    const updated = await client.tools.update(getNextEmail.id, {
-      async: getNextEmailDef.async,
-      function: getNextEmailDef.function,
-      messages: getNextEmailDef.messages,
-      server: getNextEmailDef.server,
-    });
-    console.log("Updated GetNextEmail tool:", {
-      id: updated.id,
-      name: updated.function?.name,
-    });
-    toolIds.push(updated.id);
-  }
+  for (const tool of registeredTools) {
+    const existingTool = tools.find((t) => t.function?.name === tool.name);
+    const vapiConfig = {
+      serverUrl: `${WEB_BASE_URL}/api/vapi/tools`,
+    };
 
-  const archiveEmail = tools.find(
-    (tool) => tool.function?.name === "ArchiveEmail"
-  );
-  if (!archiveEmail) {
-    const created = await client.tools.create(
-      archiveEmailDef as Vapi.ToolsCreateRequest
-    );
-    console.log("Created ArchiveEmail tool:", {
-      id: created.id,
-      name: created.function?.name,
-    });
-    toolIds.push(created.id);
-  } else {
-    const updated = await client.tools.update(archiveEmail.id, {
-      async: archiveEmailDef.async,
-      function: archiveEmailDef.function,
-      messages: archiveEmailDef.messages,
-      server: archiveEmailDef.server,
-    });
-    console.log("Updated ArchiveEmail tool:", {
-      id: updated.id,
-      name: updated.function?.name,
-    });
-    toolIds.push(updated.id);
-  }
+    const toolDefinition = createVapiToolDefinition(tool, vapiConfig);
 
-  const acceptInvite = tools.find(
-    (tool) => tool.function?.name === "AcceptInvite"
-  );
-  if (!acceptInvite) {
-    const created = await client.tools.create(
-      acceptInviteDef as Vapi.ToolsCreateRequest
-    );
-    console.log("Created AcceptInvite tool:", {
-      id: created.id,
-      name: created.function?.name,
-    });
-    toolIds.push(created.id);
-  } else {
-    const updated = await client.tools.update(acceptInvite.id, {
-      async: acceptInviteDef.async,
-      function: acceptInviteDef.function,
-      messages: acceptInviteDef.messages,
-      server: acceptInviteDef.server,
-    });
-    console.log("Updated AcceptInvite tool:", {
-      id: updated.id,
-      name: updated.function?.name,
-    });
-    toolIds.push(updated.id);
+    if (!existingTool) {
+      const created = await client.tools.create(toolDefinition);
+      console.log("Created tool:", {
+        id: created.id,
+        name: created.function?.name,
+      });
+      toolIds.push(created.id);
+    } else {
+      const updated = await client.tools.update(existingTool.id, {
+        async: toolDefinition.async,
+        function: toolDefinition.function,
+        messages: toolDefinition.messages,
+        server: toolDefinition.server,
+      });
+      console.log("Updated tool:", {
+        id: updated.id,
+        name: updated.function?.name,
+      });
+      toolIds.push(updated.id);
+    }
   }
 
   return toolIds;
 }
 
 async function main() {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  await dumpState(timestamp, "before");
   const toolIds = await updateTools();
   await updateAssistant(toolIds);
+  await dumpState(timestamp, "after");
 }
 
 main().catch(console.error);

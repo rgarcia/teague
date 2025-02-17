@@ -7,7 +7,7 @@ import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import Database from "libsql";
 import prompts from "prompts";
 import { encoding_for_model } from "tiktoken";
-import { gmailClientForToken, sanitizeForSummary } from "~/utils/gmail";
+import { emailBodyToMarkdown, gmailClientForToken } from "~/utils/gmail";
 
 // Ensure we have the required environment variables
 for (const key of [
@@ -654,7 +654,7 @@ async function cleanGmailEmail(
   gmailClient: gmail_v1.Gmail,
   userEmail: string
 ): Promise<CleanedEmailData> {
-  const content = await sanitizeForSummary(email, gmailClient);
+  const content = await emailBodyToMarkdown(gmailClient, email);
 
   let lines = content.split("\n");
   const filteredLines: string[] = [];
