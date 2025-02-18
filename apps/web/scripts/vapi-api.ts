@@ -1,5 +1,6 @@
 import { VapiClient } from "@vapi-ai/server-sdk";
-import { mkdirSync, readFileSync, writeFileSync } from "fs";
+import { mkdirSync, writeFileSync } from "fs";
+import { Langfuse } from "langfuse";
 import path from "path";
 import { acceptInviteConfig } from "~/tools/accept-invite";
 import { archiveEmailConfig } from "~/tools/archive-email";
@@ -10,11 +11,31 @@ import { ToolRegistryManager } from "~/utils/tools/registry";
 import { createVapiToolDefinition } from "~/utils/tools/vapi-adapter";
 
 const client = new VapiClient({ token: process.env.VAPI_API_KEY });
+const langfuse = new Langfuse({
+  baseUrl: process.env.LANGFUSE_BASE_URL,
+  secretKey: process.env.LANGFUSE_SECRET_KEY,
+  publicKey: process.env.LANGFUSE_PUBLIC_KEY,
+});
 
-const systemPrompt = readFileSync(
-  path.join("scripts", "system-prompt.md"),
-  "utf-8"
+let systemPrompt: string;
+const systemPromptGet = await langfuse.getPromptStateless(
+  "system-prompt",
+  undefined,
+  "production"
 );
+if (systemPromptGet.fetchResult !== "success") {
+  throw new Error("Failed to get system prompt from langfuse");
+} else if (systemPromptGet.data.type !== "chat") {
+  throw new Error("System prompt is not a chat prompt");
+} else {
+  const systemPromptEntry = systemPromptGet.data.prompt.find(
+    (p) => p.role === "system"
+  );
+  if (!systemPromptEntry) {
+    throw new Error("System prompt not found");
+  }
+  systemPrompt = systemPromptEntry.content;
+}
 
 // when dev'ing locally. TODO: make a separate assistant + tools for this
 // const WEB_BASE_URL = "https://raf--cannon.ngrok.app";
