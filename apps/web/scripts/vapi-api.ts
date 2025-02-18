@@ -3,7 +3,9 @@ import { mkdirSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 import { acceptInviteConfig } from "~/tools/accept-invite";
 import { archiveEmailConfig } from "~/tools/archive-email";
+import { filterSenderConfig } from "~/tools/filter-sender";
 import { nextEmailConfig } from "~/tools/next-email";
+import { unsubscribeConfig } from "~/tools/unsubscribe";
 import { ToolRegistryManager } from "~/utils/tools/registry";
 import { createVapiToolDefinition } from "~/utils/tools/vapi-adapter";
 
@@ -23,7 +25,9 @@ const WEB_BASE_URL = "https://prod--web.raf.xyz";
 const registry = new ToolRegistryManager();
 registry.registerTool(acceptInviteConfig);
 registry.registerTool(archiveEmailConfig);
+registry.registerTool(filterSenderConfig);
 registry.registerTool(nextEmailConfig);
+registry.registerTool(unsubscribeConfig);
 
 async function dumpState(timestamp: string, prefix: string) {
   const tools = await client.tools.list();

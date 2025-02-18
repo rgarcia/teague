@@ -56,4 +56,8 @@ flowchart TD
     Skip --> GetNextEmail
     %% As soon as you successfully AcceptInvite you should transition to calling the GetNextEmail tool.
     AcceptInvite --> GetNextEmail
+    %% As soon as you successfully FilterSender you should transition to calling the GetNextEmail tool.
+    FilterSender --> GetNextEmail
+    %% As soon as you successfully Unsubscribe you should transition to calling the GetNextEmail tool.
+    Unsubscribe --> GetNextEmail
 ```

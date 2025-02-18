@@ -6,15 +6,16 @@ import {
 } from "~/utils/gmail";
 import type { BaseToolConfig } from "~/utils/tools/registry";
 
-const nextEmailSchema = z.object({
+export const nextEmailSchema = z.object({
   query: z.string().describe("The email query to use. E.g., 'in:inbox'"),
   nextPageToken: z
     .string()
     .describe("The next page token to use for pagination")
     .optional(),
 });
+export type NextEmailInput = z.infer<typeof nextEmailSchema>;
 
-type NextEmailOutput = {
+export type NextEmailOutput = {
   id: string;
   nextPageToken?: string;
   content: string;
