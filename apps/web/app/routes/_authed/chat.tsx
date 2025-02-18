@@ -112,11 +112,11 @@ function ChatComponent() {
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <NextEmailToolUI />
+      {/* <NextEmailToolUI />
       <ArchiveEmailToolUI />
       <FilterSenderToolUI />
       <AcceptInviteToolUI />
-      <UnsubscribeToolUI />
+      <UnsubscribeToolUI /> */}
       {/* <div className="grid h-dvh grid-cols-[200px_1fr] gap-x-2 px-4 py-72"> */}
       {/* <ThreadList /> */}
       <div className="grid h-dvh grid-cols-1 gap-x-2 px-4 py-72">
