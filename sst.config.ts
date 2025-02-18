@@ -75,6 +75,10 @@ export default $config({
         name: "PORT",
         value: "8080",
       },
+      {
+        name: "NODE_ENV",
+        value: $app.stage === Stage.Prod ? "production" : "development",
+      },
     ];
 
     const web = new railway.Service("web", {
