@@ -3,7 +3,9 @@ import { createAPIFileRoute } from "@tanstack/start/api";
 import type { Vapi } from "@vapi-ai/server-sdk";
 import { acceptInviteConfig } from "~/tools/accept-invite";
 import { archiveEmailConfig } from "~/tools/archive-email";
+import { filterSenderConfig } from "~/tools/filter-sender";
 import { nextEmailConfig } from "~/tools/next-email";
+import { unsubscribeConfig } from "~/tools/unsubscribe";
 import { clerk, getUserIdFromClerkJwt } from "~/utils/clerk";
 import {
   ToolRegistryManager,
@@ -14,7 +16,9 @@ import {
 const registry = new ToolRegistryManager();
 registry.registerTool(acceptInviteConfig);
 registry.registerTool(archiveEmailConfig);
+registry.registerTool(filterSenderConfig);
 registry.registerTool(nextEmailConfig);
+registry.registerTool(unsubscribeConfig);
 
 type VapiResponse = ReturnType<typeof json<Vapi.ServerMessageResponse>>;
 

@@ -509,3 +509,98 @@ export async function parseGmailEmail(
     labels,
   };
 }
+
+export type CreateFilterInput = {
+  googleToken: string;
+  fromEmail: string;
+};
+
+export type CreateFilterOutput = { success: boolean };
+
+export async function createFilter(
+  input: CreateFilterInput
+): Promise<CreateFilterOutput> {
+  const gmailClient = gmailClientForToken(input.googleToken);
+
+  if (!input.fromEmail) {
+    throw new Error("Cannot create filter: from email is empty");
+  }
+
+  const filterConfig = {
+    criteria: {
+      from: input.fromEmail,
+    },
+    action: {
+      removeLabelIds: ["INBOX"],
+    },
+  };
+
+  const res = await gmailClient.users.settings.filters.create({
+    userId: "me",
+    requestBody: filterConfig,
+  });
+
+  if (res.status !== 200) {
+    throw new Error(`Failed to create filter: ${res.statusText}`);
+  }
+
+  return { success: true };
+}
+
+export type UnsubscribeEmailInput = {
+  googleToken: string;
+  messageId: string;
+};
+
+export type UnsubscribeEmailOutput = { success: boolean };
+
+export async function unsubscribeEmail(
+  input: UnsubscribeEmailInput
+): Promise<UnsubscribeEmailOutput> {
+  const gmailClient = gmailClientForToken(input.googleToken);
+
+  // Get the full email message
+  const message = await gmailClient.users.messages.get({
+    userId: "me",
+    id: input.messageId,
+    format: "full",
+  });
+
+  const headers = message.data.payload?.headers || [];
+  const listUnsubscribe = headers.find(
+    (header) => header.name?.toLowerCase() === "list-unsubscribe"
+  )?.value;
+
+  const listUnsubscribePost = headers.find(
+    (header) => header.name?.toLowerCase() === "list-unsubscribe-post"
+  )?.value;
+
+  if (!listUnsubscribe || !listUnsubscribePost) {
+    throw new Error("Cannot unsubscribe: missing required headers");
+  }
+
+  // Extract HTTPS URL from List-Unsubscribe header
+  // Format is typically: <https://example.com/unsubscribe>, <mailto:...>
+  const matches = listUnsubscribe.match(/<(https:\/\/[^>]+)>/);
+  if (!matches) {
+    throw new Error(
+      "Cannot unsubscribe: no HTTPS URL found in List-Unsubscribe header"
+    );
+  }
+
+  const unsubscribeUrl = matches[1];
+
+  const res = await fetch(unsubscribeUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: "List-Unsubscribe=One-Click",
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to unsubscribe: ${res.statusText}`);
+  }
+
+  return { success: true };
+}
