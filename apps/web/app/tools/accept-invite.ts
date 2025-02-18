@@ -7,8 +7,9 @@ const acceptInviteSchema = z.object({
   messageId: z.string().describe("The ID of the message containing the invite"),
   eventId: z.string().describe("The ID of the event to accept"),
 });
+export type AcceptInviteInput = z.infer<typeof acceptInviteSchema>;
 
-type AcceptInviteOutput = { success: boolean };
+export type AcceptInviteOutput = { success: boolean };
 
 export const acceptInviteConfig: BaseToolConfig<
   typeof acceptInviteSchema,

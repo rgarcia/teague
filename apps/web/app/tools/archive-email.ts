@@ -5,8 +5,9 @@ import type { BaseToolConfig } from "~/utils/tools/registry";
 const archiveEmailSchema = z.object({
   messageId: z.string().describe("The ID of the message to archive"),
 });
+export type ArchiveEmailInput = z.infer<typeof archiveEmailSchema>;
 
-type ArchiveEmailOutput = { success: boolean };
+export type ArchiveEmailOutput = { success: boolean };
 
 export const archiveEmailConfig: BaseToolConfig<
   typeof archiveEmailSchema,

@@ -5,8 +5,9 @@ import type { BaseToolConfig } from "~/utils/tools/registry";
 const unsubscribeSchema = z.object({
   messageId: z.string().describe("The ID of the message to unsubscribe from"),
 });
+export type UnsubscribeInput = z.infer<typeof unsubscribeSchema>;
 
-type UnsubscribeOutput = { success: boolean };
+export type UnsubscribeOutput = { success: boolean };
 
 export const unsubscribeConfig: BaseToolConfig<
   typeof unsubscribeSchema,

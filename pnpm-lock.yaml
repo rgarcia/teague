@@ -82,6 +82,9 @@ importers:
       google-auth-library:
         specifier: ^9.15.1
         version: 9.15.1
+      langfuse:
+        specifier: ^3.35.2
+        version: 3.35.2
       lucide-react:
         specifier: ^0.475.0
         version: 0.475.0(react@19.0.0)
@@ -3486,6 +3489,14 @@ packages:
         optional: true
       typeorm:
         optional: true
+
+  langfuse-core@3.35.2:
+    resolution: {integrity: sha512-nHcoe/RPxwCAVvb91NDjVqvaXkBuVI6u9KuhCXLOasIOqMZRnXMeDhheAPE1ZtVGpmc3faYdPPGdobqRB+MdCg==}
+    engines: {node: '>=18'}
+
+  langfuse@3.35.2:
+    resolution: {integrity: sha512-iLKK9capLVle7vHRHKYj6tqRJVD+ncc5nVcKYEA7eidNPRSSYRdZf73Q73lW8wFBcKpbynRJN1byWT615Gg9tw==}
+    engines: {node: '>=18'}
 
   langsmith@0.3.7:
     resolution: {integrity: sha512-wakN1hxGkm1JR2PpAV7fiT7oC99LKcgxiuUrYGZWPbuj7Y8EPF19F7VNr4B+hA219bfaeWTa4Lxy2YrtPSKnQA==}
@@ -9134,6 +9145,14 @@ snapshots:
       - encoding
       - openai
       - ws
+
+  langfuse-core@3.35.2:
+    dependencies:
+      mustache: 4.2.0
+
+  langfuse@3.35.2:
+    dependencies:
+      langfuse-core: 3.35.2
 
   langsmith@0.3.7(openai@4.85.1(zod@3.24.2)):
     dependencies:

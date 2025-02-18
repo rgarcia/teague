@@ -5,8 +5,9 @@ import type { BaseToolConfig } from "~/utils/tools/registry";
 const filterSenderSchema = z.object({
   fromEmail: z.string().describe("The email address to create a filter for"),
 });
+export type FilterSenderInput = z.infer<typeof filterSenderSchema>;
 
-type FilterSenderOutput = { success: boolean };
+export type FilterSenderOutput = { success: boolean };
 
 export const filterSenderConfig: BaseToolConfig<
   typeof filterSenderSchema,
