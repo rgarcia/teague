@@ -106,22 +106,18 @@ const UnsubscribeToolUI = createSimpleToolUI<
 });
 
 function ChatComponent() {
-  const runtime = useChatRuntime({
-    api: "/api/chat",
-  });
-
   return (
-    <AssistantRuntimeProvider runtime={runtime}>
-      {/* <NextEmailToolUI />
+    <>
+      <div className="grid h-dvh grid-cols-1 gap-x-2 px-4 py-72">
+        {/* <NextEmailToolUI />
       <ArchiveEmailToolUI />
       <FilterSenderToolUI />
       <AcceptInviteToolUI />
       <UnsubscribeToolUI /> */}
-      {/* <div className="grid h-dvh grid-cols-[200px_1fr] gap-x-2 px-4 py-72"> */}
-      {/* <ThreadList /> */}
-      <div className="grid h-dvh grid-cols-1 gap-x-2 px-4 py-72">
+        {/* <div className="grid h-dvh grid-cols-[200px_1fr] gap-x-2 px-4 py-72"> */}
+        {/* <ThreadList /> */}
         <Thread />
       </div>
-    </AssistantRuntimeProvider>
+    </>
   );
 }
