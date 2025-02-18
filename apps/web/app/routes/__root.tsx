@@ -120,6 +120,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           >
             Posts
           </Link>
+          <Link
+            to="/chat"
+            activeProps={{
+              className: "font-bold",
+            }}
+          >
+            Chat
+          </Link>
           <div className="ml-auto">
             <SignedIn>
               <UserButton />

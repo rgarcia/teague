@@ -14,6 +14,7 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as AuthedImport } from './routes/_authed'
 import { Route as IndexImport } from './routes/index'
 import { Route as AuthedPostsImport } from './routes/_authed/posts'
+import { Route as AuthedChatImport } from './routes/_authed/chat'
 import { Route as AuthedPostsIndexImport } from './routes/_authed/posts.index'
 import { Route as AuthedProfileSplatImport } from './routes/_authed/profile.$'
 import { Route as AuthedPostsPostIdImport } from './routes/_authed/posts.$postId'
@@ -34,6 +35,12 @@ const IndexRoute = IndexImport.update({
 const AuthedPostsRoute = AuthedPostsImport.update({
   id: '/posts',
   path: '/posts',
+  getParentRoute: () => AuthedRoute,
+} as any)
+
+const AuthedChatRoute = AuthedChatImport.update({
+  id: '/chat',
+  path: '/chat',
   getParentRoute: () => AuthedRoute,
 } as any)
 
@@ -72,6 +79,13 @@ declare module '@tanstack/react-router' {
       fullPath: ''
       preLoaderRoute: typeof AuthedImport
       parentRoute: typeof rootRoute
+    }
+    '/_authed/chat': {
+      id: '/_authed/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof AuthedChatImport
+      parentRoute: typeof AuthedImport
     }
     '/_authed/posts': {
       id: '/_authed/posts'
@@ -121,11 +135,13 @@ const AuthedPostsRouteWithChildren = AuthedPostsRoute._addFileChildren(
 )
 
 interface AuthedRouteChildren {
+  AuthedChatRoute: typeof AuthedChatRoute
   AuthedPostsRoute: typeof AuthedPostsRouteWithChildren
   AuthedProfileSplatRoute: typeof AuthedProfileSplatRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedChatRoute: AuthedChatRoute,
   AuthedPostsRoute: AuthedPostsRouteWithChildren,
   AuthedProfileSplatRoute: AuthedProfileSplatRoute,
 }
@@ -136,6 +152,7 @@ const AuthedRouteWithChildren =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '': typeof AuthedRouteWithChildren
+  '/chat': typeof AuthedChatRoute
   '/posts': typeof AuthedPostsRouteWithChildren
   '/posts/$postId': typeof AuthedPostsPostIdRoute
   '/profile/$': typeof AuthedProfileSplatRoute
@@ -145,6 +162,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '': typeof AuthedRouteWithChildren
+  '/chat': typeof AuthedChatRoute
   '/posts/$postId': typeof AuthedPostsPostIdRoute
   '/profile/$': typeof AuthedProfileSplatRoute
   '/posts': typeof AuthedPostsIndexRoute
@@ -154,6 +172,7 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
+  '/_authed/chat': typeof AuthedChatRoute
   '/_authed/posts': typeof AuthedPostsRouteWithChildren
   '/_authed/posts/$postId': typeof AuthedPostsPostIdRoute
   '/_authed/profile/$': typeof AuthedProfileSplatRoute
@@ -162,13 +181,21 @@ export interface FileRoutesById {
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '' | '/posts' | '/posts/$postId' | '/profile/$' | '/posts/'
+  fullPaths:
+    | '/'
+    | ''
+    | '/chat'
+    | '/posts'
+    | '/posts/$postId'
+    | '/profile/$'
+    | '/posts/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '' | '/posts/$postId' | '/profile/$' | '/posts'
+  to: '/' | '' | '/chat' | '/posts/$postId' | '/profile/$' | '/posts'
   id:
     | '__root__'
     | '/'
     | '/_authed'
+    | '/_authed/chat'
     | '/_authed/posts'
     | '/_authed/posts/$postId'
     | '/_authed/profile/$'
@@ -206,9 +233,14 @@ export const routeTree = rootRoute
     "/_authed": {
       "filePath": "_authed.tsx",
       "children": [
+        "/_authed/chat",
         "/_authed/posts",
         "/_authed/profile/$"
       ]
+    },
+    "/_authed/chat": {
+      "filePath": "_authed/chat.tsx",
+      "parent": "/_authed"
     },
     "/_authed/posts": {
       "filePath": "_authed/posts.tsx",
