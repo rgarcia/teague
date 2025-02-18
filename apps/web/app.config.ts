@@ -11,6 +11,9 @@ export default defineConfig({
         "prod--web.raf.xyz",
       ],
     },
+    build: {
+      sourcemap: true,
+    },
     plugins: [
       tsConfigPaths({
         projects: ["./tsconfig.json"],
