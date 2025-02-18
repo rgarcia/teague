@@ -53,7 +53,6 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
       if (systemPrompt.type !== "chat") {
         throw new Error("System prompt is not a chat prompt");
       }
-      console.log("DEBUG system prompt loaded");
     }
 
     const { userId } = await getAuth(request);
@@ -66,7 +65,6 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
     );
     const googleToken = clerkRes.data[0].token;
     const { messages } = await request.json();
-    console.log("DEBUG messages", messages);
     const result = streamText({
       model: openai("gpt-4o-mini"),
       system: systemPrompt.compile().find((p) => p.role === "system")?.content,
@@ -95,7 +93,6 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
         },
       },
     });
-    console.log("DEBUG result");
     return result.toDataStreamResponse();
   },
 });

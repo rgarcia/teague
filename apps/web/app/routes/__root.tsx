@@ -7,8 +7,6 @@ import {
   SignedOut,
   UserButton,
 } from "@clerk/tanstack-start";
-import { AssistantRuntimeProvider } from "@assistant-ui/react";
-import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 import { Meta, Scripts, createServerFn } from "@tanstack/start";
 import * as React from "react";
@@ -88,18 +86,12 @@ export const Route = createRootRoute({
 });
 
 function RootComponent() {
-  const runtime = useChatRuntime({
-    api: "/api/chat",
-  });
-
   return (
-    <AssistantRuntimeProvider runtime={runtime}>
-      <ClerkProvider>
-        <RootDocument>
-          <Outlet />
-        </RootDocument>
-      </ClerkProvider>
-    </AssistantRuntimeProvider>
+    <ClerkProvider>
+      <RootDocument>
+        <Outlet />
+      </RootDocument>
+    </ClerkProvider>
   );
 }
 

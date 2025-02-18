@@ -45,6 +45,9 @@ export default $config({
       langfuse: {
         secretKey: new sst.Secret("LangfuseSecretKey"),
       },
+      openai: {
+        apiKey: new sst.Secret("OpenAIApiKey"),
+      },
     };
     const vars = [
       {
@@ -70,6 +73,10 @@ export default $config({
       {
         name: "LANGFUSE_BASE_URL",
         value: "https://us.cloud.langfuse.com",
+      },
+      {
+        name: "OPENAI_API_KEY",
+        value: secrets.openai.apiKey.value,
       },
       {
         name: "PORT",
