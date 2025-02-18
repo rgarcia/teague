@@ -42,6 +42,9 @@ export default $config({
         publishableKey: new sst.Secret("ClerkPublishableKey"),
         secretKey: new sst.Secret("ClerkSecretKey"),
       },
+      langfuse: {
+        secretKey: new sst.Secret("LangfuseSecretKey"),
+      },
     };
     const vars = [
       {
@@ -55,6 +58,18 @@ export default $config({
       {
         name: "VITE_CLERK_PUBLISHABLE_KEY",
         value: secrets.clerk.publishableKey.value,
+      },
+      {
+        name: "LANGFUSE_SECRET_KEY",
+        value: secrets.langfuse.secretKey.value,
+      },
+      {
+        name: "LANGFUSE_PUBLIC_KEY",
+        value: "pk-lf-e8c1add9-93a5-458d-96cc-44de551fcba1",
+      },
+      {
+        name: "LANGFUSE_BASE_URL",
+        value: "https://us.cloud.langfuse.com",
       },
       {
         name: "PORT",

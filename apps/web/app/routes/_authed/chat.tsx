@@ -23,14 +23,22 @@ function createSimpleToolUI<TInput, TOutput>({
   completedMessage,
 }: {
   toolName: string;
-  runningMessage: string | ((args: TInput) => string);
-  completedMessage: string | ((args: TInput) => string);
+  runningMessage:
+    | string
+    | ((args: TInput, result: TOutput | undefined) => string);
+  completedMessage:
+    | string
+    | ((args: TInput, result: TOutput | undefined) => string);
 }) {
   return makeAssistantToolUI<TInput, TOutput>({
     toolName,
-    render: ({ args, status }) => {
-      const getMessage = (message: string | ((args: TInput) => string)) =>
-        typeof message === "function" ? message(args) : message;
+    render: ({ args, status, result }) => {
+      const getMessage = (
+        message:
+          | string
+          | ((args: TInput, result: TOutput | undefined) => string)
+      ): string =>
+        typeof message === "function" ? message(args, result) : message;
 
       return (
         <Badge

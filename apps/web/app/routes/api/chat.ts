@@ -1,9 +1,12 @@
 import { openai } from "@ai-sdk/openai";
 import { getAuth } from "@clerk/tanstack-start/server";
+import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
+import { NodeSDK } from "@opentelemetry/sdk-node";
 import { json } from "@tanstack/start";
 import { createAPIFileRoute } from "@tanstack/start/api";
 import { streamText, tool } from "ai";
 import Langfuse, { ChatPromptClient } from "langfuse";
+import { LangfuseExporter } from "langfuse-vercel";
 import { acceptInviteConfig } from "~/tools/accept-invite";
 import { archiveEmailConfig } from "~/tools/archive-email";
 import { filterSenderConfig } from "~/tools/filter-sender";
@@ -20,23 +23,38 @@ registry.registerTool(filterSenderConfig);
 registry.registerTool(nextEmailConfig);
 registry.registerTool(unsubscribeConfig);
 
-const langfuse = new Langfuse({
+const lfConfig = {
   baseUrl: process.env.LANGFUSE_BASE_URL,
   secretKey: process.env.LANGFUSE_SECRET_KEY,
   publicKey: process.env.LANGFUSE_PUBLIC_KEY,
+};
+const langfuse = new Langfuse(lfConfig);
+
+const sdk = new NodeSDK({
+  traceExporter: new LangfuseExporter(lfConfig),
+  instrumentations: [getNodeAutoInstrumentations()],
 });
 
-const systemPrompt: ChatPromptClient = await langfuse.getPrompt(
-  "system-prompt",
-  undefined,
-  { label: "production", type: "chat" }
-);
-if (systemPrompt.type !== "chat") {
-  throw new Error("System prompt is not a chat prompt");
-}
+sdk.start();
+process.on("SIGTERM", () => {
+  sdk.shutdown();
+});
+
+let systemPrompt: ChatPromptClient;
 
 export const APIRoute = createAPIFileRoute("/api/chat")({
   POST: async ({ request, params }) => {
+    // Initialize system prompt if not already done
+    if (!systemPrompt) {
+      systemPrompt = await langfuse.getPrompt("system-prompt", undefined, {
+        label: "production",
+        type: "chat",
+      });
+      if (systemPrompt.type !== "chat") {
+        throw new Error("System prompt is not a chat prompt");
+      }
+    }
+
     const { userId } = await getAuth(request);
     if (!userId) {
       return json({ error: "Unauthorized" }, { status: 401 });
@@ -68,6 +86,13 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
           ];
         })
       ),
+      experimental_telemetry: {
+        isEnabled: true,
+        metadata: {
+          langfusePrompt: systemPrompt.toJSON(),
+          userId,
+        },
+      },
     });
     return result.toDataStreamResponse();
   },
