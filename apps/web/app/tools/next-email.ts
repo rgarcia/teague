@@ -77,7 +77,10 @@ export const nextEmailConfig: BaseToolConfig<
       }
 
       const parsedEmail = await parseGmailEmail(email, gmailClient, userEmail);
-
+      console.log("FETCH EMAILS RETURN", {
+        id: email.id,
+        nextPageToken: nextPageTokenFromFetch,
+      });
       return {
         id: email.id ?? "",
         nextPageToken: nextPageTokenFromFetch,
