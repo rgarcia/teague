@@ -21,6 +21,8 @@ import { Colors } from "@/constants/colors";
 import { useRef, useState, useMemo } from "react";
 import { Vapi } from "@vapi-ai/server-sdk";
 import { useAuth } from "@clerk/clerk-expo";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
 type ConversationMessage = Vapi.ClientMessageConversationUpdateMessagesItem;
 
 interface CondensedMessage {
@@ -174,6 +176,23 @@ const condenseMessages = (
   return condensed;
 };
 
+function inProgressText(toolName: string) {
+  switch (toolName) {
+    case "GetNextEmail":
+      return "Getting next email";
+    case "ArchiveEmail":
+      return "Archiving email";
+    case "FilterSender":
+      return "Filtering sender from inbox";
+    case "AcceptInvite":
+      return "Accepting calendar invite";
+    case "Unsubscribe":
+      return "Unsubscribing from sender";
+    default:
+      return toolName;
+  }
+}
+
 const MessageItem = ({ message }: { message: CondensedMessage }) => {
   const colorScheme = useColorScheme() ?? "light";
   const themedStyles = styles[colorScheme];
@@ -184,7 +203,7 @@ const MessageItem = ({ message }: { message: CondensedMessage }) => {
         <View style={themedStyles.loadingContainer}>
           <ActivityIndicator size="small" color={Colors[colorScheme].icon} />
           <Text style={[themedStyles.messageText, themedStyles.loadingText]}>
-            Processing
+            {inProgressText(message.toolCall?.name ?? "")}
           </Text>
         </View>
       );
@@ -202,17 +221,54 @@ const MessageItem = ({ message }: { message: CondensedMessage }) => {
                 : "⚠️ Failed to archive email"}
             </Text>
           );
+        case "FilterSender":
+          return (
+            <Text style={themedStyles.messageText}>
+              {result.success
+                ? "✓ Sender filtered"
+                : "⚠️ Failed to filter sender"}
+            </Text>
+          );
+        case "AcceptInvite":
+          return (
+            <Text style={themedStyles.messageText}>
+              {result.success
+                ? "✓ Invite accepted"
+                : "⚠️ Failed to accept invite"}
+            </Text>
+          );
+        case "Unsubscribe":
+          return (
+            <Text style={themedStyles.messageText}>
+              {result.success ? "✓ Unsubscribed" : "⚠️ Failed to unsubscribe"}
+            </Text>
+          );
 
         case "GetNextEmail": {
           if (!result.content) return <Text>No email found</Text>;
-          const { from, subject } = result.content;
+          const from = (
+            result.content
+              .split("\n")
+              .find((l: string) => l.startsWith("From:")) ?? ""
+          )
+            .replace("From: ", "")
+            .trim();
+          const subject = (
+            result.content
+              .split("\n")
+              .find((l: string) => l.startsWith("Subject:")) ?? ""
+          )
+            .replace("Subject: ", "")
+            .trim();
           return (
             <View style={themedStyles.emailPreview}>
               <Text style={themedStyles.emailField}>
-                <Text style={themedStyles.emailLabel}>From:</Text> {from}
+                <Text style={themedStyles.emailLabel}>From: </Text>
+                {from}
               </Text>
               <Text style={themedStyles.emailField}>
-                <Text style={themedStyles.emailLabel}>Subject:</Text> {subject}
+                <Text style={themedStyles.emailLabel}>Subject: </Text>
+                {subject}
               </Text>
             </View>
           );
@@ -265,20 +321,16 @@ const MessageItem = ({ message }: { message: CondensedMessage }) => {
 
     case "tool":
       const isError = message.toolCall?.result === "No result returned.";
+      const inProgress = message.toolCall?.result === null;
       return (
         <View
           style={[
             themedStyles.messageContainer,
             isError
               ? themedStyles.errorMessage
-              : message.toolCall?.result
-                ? themedStyles.functionResultMessage
-                : themedStyles.functionCallMessage,
+              : themedStyles.functionResultMessage,
           ]}
         >
-          <Text style={[themedStyles.messageRole, { textTransform: "none" }]}>
-            {message.toolCall?.name}
-          </Text>
           {renderToolResult()}
         </View>
       );
@@ -289,7 +341,8 @@ const MessageItem = ({ message }: { message: CondensedMessage }) => {
 };
 
 export default function Page() {
-  const { toggleCall, callStatus, conversation, send } = useVapi();
+  const { toggleCall, callStatus, conversation, send, setMuted, isMuted } =
+    useVapi();
   const { getToken } = useAuth();
   const colorScheme = useColorScheme() ?? "light";
   const themedStyles = styles[colorScheme];
@@ -362,18 +415,35 @@ export default function Page() {
         ScrollViewComponent={View} // we don't actually want it to scroll (the flatlist will do that)
       >
         <View style={themedStyles.header}>
-          <Pressable
-            onPress={handleToggleCall}
-            disabled={callStatus === CALL_STATUS.LOADING}
-            style={({ pressed }) => [
-              themedStyles.button,
-              pressed && themedStyles.buttonPressed,
-              callStatus === CALL_STATUS.LOADING && themedStyles.buttonDisabled,
-              callStatus === CALL_STATUS.ACTIVE && themedStyles.buttonActive,
-            ]}
-          >
-            <Text style={themedStyles.buttonText}>{getButtonText()}</Text>
-          </Pressable>
+          <View style={themedStyles.headerButtons}>
+            <Pressable
+              onPress={handleToggleCall}
+              disabled={callStatus === CALL_STATUS.LOADING}
+              style={({ pressed }) => [
+                themedStyles.button,
+                pressed && themedStyles.buttonPressed,
+                callStatus === CALL_STATUS.LOADING &&
+                  themedStyles.buttonDisabled,
+                callStatus === CALL_STATUS.ACTIVE && themedStyles.buttonActive,
+              ]}
+            >
+              <Text style={themedStyles.buttonText}>{getButtonText()}</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setMuted(!isMuted())}
+              style={({ pressed }) => [
+                themedStyles.muteButton,
+                pressed && themedStyles.buttonPressed,
+              ]}
+            >
+              <Ionicons
+                name={isMuted() ? "mic-off" : "mic"}
+                size={20}
+                color={Colors[colorScheme].text}
+              />
+            </Pressable>
+          </View>
         </View>
 
         <FlatList
@@ -533,7 +603,6 @@ const createThemedStyles = (theme: "light" | "dark") =>
       color: Colors[theme].danger,
     },
     emailPreview: {
-      marginTop: 8,
       padding: 8,
       backgroundColor: Colors[theme].background,
       borderRadius: 6,
@@ -561,6 +630,22 @@ const createThemedStyles = (theme: "light" | "dark") =>
     },
     flatListContent: {
       padding: 8,
+    },
+    headerButtons: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    muteButton: {
+      backgroundColor: Colors[theme].surfaceSubtle,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: Colors[theme].border,
+    },
+    muteButtonText: {
+      fontSize: 16,
     },
   });
 

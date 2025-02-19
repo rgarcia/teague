@@ -129,7 +129,9 @@ export function useVapi() {
     console.log("[vapi] setting mute", value);
     vapi.setMuted(value);
   };
-  const isMuted = vapi.isMuted;
+  const isMuted = () => {
+    return vapi.isMuted();
+  };
 
   const send = (msg: any) => {
     console.log("[vapi] sending", JSON.stringify(msg));
