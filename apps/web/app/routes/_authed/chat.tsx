@@ -11,6 +11,7 @@ import { AcceptInviteInput, AcceptInviteOutput } from "~/tools/accept-invite";
 import { UnsubscribeInput, UnsubscribeOutput } from "~/tools/unsubscribe";
 import { CheckIcon, LoaderIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { SignedIn } from "@clerk/tanstack-start";
 
 export const Route = createFileRoute("/_authed/chat")({
   component: ChatComponent,
@@ -111,17 +112,19 @@ function ChatComponent() {
   });
 
   return (
-    <AssistantRuntimeProvider runtime={runtime}>
-      <div className="grid h-dvh grid-cols-1 gap-x-2 px-4 py-72">
-        <NextEmailToolUI />
-        <ArchiveEmailToolUI />
-        <FilterSenderToolUI />
-        <AcceptInviteToolUI />
-        <UnsubscribeToolUI />
-        {/* <div className="grid h-dvh grid-cols-[200px_1fr] gap-x-2 px-4 py-72"> */}
-        {/* <ThreadList /> */}
-        <Thread />
-      </div>
-    </AssistantRuntimeProvider>
+    <SignedIn>
+      <AssistantRuntimeProvider runtime={runtime}>
+        <div className="grid h-dvh grid-cols-1 gap-x-2 px-4 py-72">
+          <NextEmailToolUI />
+          <ArchiveEmailToolUI />
+          <FilterSenderToolUI />
+          <AcceptInviteToolUI />
+          <UnsubscribeToolUI />
+          {/* <div className="grid h-dvh grid-cols-[200px_1fr] gap-x-2 px-4 py-72"> */}
+          {/* <ThreadList /> */}
+          <Thread />
+        </div>
+      </AssistantRuntimeProvider>
+    </SignedIn>
   );
 }
