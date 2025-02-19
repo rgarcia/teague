@@ -74,33 +74,6 @@ export function useVapi() {
       process.env.EXPO_PUBLIC_VAPI_ASSISTANT_ID!,
       assistantOverrides
     );
-    // default to muted on call start
-    vapi.once("call-start", () => {
-      vapi.setMuted(true);
-    });
-    // const response = vapi.start({
-
-    //   endCallFunctionEnabled: true,
-    //   model: {
-    //     provider: 'openai',
-    //     functions: [
-    //       {
-    //         name: 'get_current_weather',
-    //         description: 'Get the current weather in a given location',
-    //         parameters: { type: 'object', properties: { location: { type: 'string', description: 'The location to get the weather for' } }, required: ['location'] },
-    //       },
-    //     ],
-    //     model: 'gpt-3.5-turbo',
-    //     // "fallbackModels": ["gpt-4-1106-preview", "gpt-4-0125-preview"],
-    //     messages: [
-    //       {
-    //         content: 'you are an assistant',
-    //         role: 'assistant',
-    //       },
-    //     ],
-    //   },
-    // });
-
     response
       .then((_res) => {
         setCallStatus(CALL_STATUS.ACTIVE);

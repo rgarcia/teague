@@ -432,13 +432,22 @@ export default function Page() {
 
             <Pressable
               onPress={() => setMuted(!isMuted())}
+              disabled={callStatus !== CALL_STATUS.ACTIVE}
               style={({ pressed }) => [
                 themedStyles.muteButton,
                 pressed && themedStyles.buttonPressed,
+                callStatus !== CALL_STATUS.ACTIVE &&
+                  themedStyles.muteButtonDisabled,
               ]}
             >
               <Ionicons
-                name={isMuted() ? "mic-off" : "mic"}
+                name={
+                  callStatus === CALL_STATUS.ACTIVE
+                    ? isMuted()
+                      ? "mic-off"
+                      : "mic"
+                    : "mic-off"
+                }
                 size={20}
                 color={Colors[colorScheme].text}
               />
@@ -643,6 +652,9 @@ const createThemedStyles = (theme: "light" | "dark") =>
       borderRadius: 8,
       borderWidth: 1,
       borderColor: Colors[theme].border,
+    },
+    muteButtonDisabled: {
+      opacity: 0.5,
     },
     muteButtonText: {
       fontSize: 16,
