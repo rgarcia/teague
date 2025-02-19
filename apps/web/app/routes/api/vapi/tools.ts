@@ -68,7 +68,6 @@ export const APIRoute = createAPIFileRoute("/api/vapi/tools")({
       }
 
       const toolCalls = msg.message.toolCallList;
-      console.log("VAPI SERVER MSG", JSON.stringify(toolCalls, null, 2));
       const results: Vapi.ToolCallResult[] = [];
       const context: RequestContext = {
         googleToken,

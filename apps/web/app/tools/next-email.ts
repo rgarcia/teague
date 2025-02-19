@@ -35,7 +35,7 @@ export const nextEmailConfig: BaseToolConfig<
         type: "string",
         description: "The email query to use. E.g., 'in:inbox'",
       },
-      nextToken: {
+      nextPageToken: {
         type: "string",
         description: "The next page token to use for pagination",
       },
@@ -48,7 +48,6 @@ export const nextEmailConfig: BaseToolConfig<
     }
 
     try {
-      console.log("FETCH EMAILS", { query, nextPageToken });
       const response = await fetchEmails({
         googleToken: context.googleToken,
         maxResults: 1,
@@ -77,10 +76,6 @@ export const nextEmailConfig: BaseToolConfig<
       }
 
       const parsedEmail = await parseGmailEmail(email, gmailClient, userEmail);
-      console.log("FETCH EMAILS RETURN", {
-        id: email.id,
-        nextPageToken: nextPageTokenFromFetch,
-      });
       return {
         id: email.id ?? "",
         nextPageToken: nextPageTokenFromFetch,
