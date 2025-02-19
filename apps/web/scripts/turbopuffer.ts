@@ -1,10 +1,12 @@
 import { createClerkClient } from "@clerk/backend";
 import { Command } from "@commander-js/extra-typings";
 import { gmail_v1 } from "@googleapis/gmail";
+import { VoyageEmbeddings } from "@langchain/community/embeddings/voyage";
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { Namespace, Turbopuffer, Vector } from "@turbopuffer/turbopuffer";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import Database from "libsql";
+import pMap from "p-map";
 import prompts from "prompts";
 import { encoding_for_model } from "tiktoken";
 import {
@@ -18,6 +20,7 @@ for (const key of [
   "CLERK_SECRET_KEY",
   "TURBOPUFFER_API_KEY",
   "OPENAI_API_KEY",
+  "VOYAGEAI_API_KEY",
 ]) {
   if (!process.env[key]) {
     console.error(`${key} environment variable is required`);
@@ -47,6 +50,11 @@ program
     "Percentage of emails to prompt for review (0-100)",
     "100"
   )
+  .option(
+    "-m, --model <model>",
+    "Embedding model to use (openai/* for OpenAI models or voyage/* for Voyage models)",
+    "voyage/voyage-3-large"
+  )
   .action(async (options) => {
     // Get user ID from command line arguments
     const userId = options.userId;
@@ -60,7 +68,7 @@ program
     const nukeNamespace = options.nukeNs;
     const ignoreCache = options.ignoreCache;
     const sampleRate = Math.max(
-      1,
+      0,
       Math.min(100, parseInt(options.sampleRate, 10))
     );
 
@@ -96,12 +104,13 @@ program
       let pageToken: string | undefined | null = undefined;
 
       while (processedCount < numEmails) {
+        console.log(`Processing ${processedCount} of ${numEmails} emails`);
         // List emails matching the search query
         const listRes: gmail_v1.Schema$ListMessagesResponse = (
           await gmailClient.users.messages.list({
             userId: "me",
             q: searchQuery,
-            maxResults: Math.min(50, numEmails - processedCount),
+            maxResults: Math.min(10, numEmails - processedCount),
             pageToken: pageToken || undefined,
           })
         ).data;
@@ -112,78 +121,92 @@ program
         }
 
         // Prepare batch of emails for vector indexing
-        const emailVectors = [];
+        const emailVectors = await pMap(
+          listRes.messages,
+          async (message) => {
+            if (processedCount >= numEmails) return null;
 
-        // Fetch and display full details for each email
-        for (const message of listRes.messages) {
-          if (processedCount >= numEmails) break;
+            // Skip if already embedded
+            if (!ignoreCache && (await isEmailEmbedded(userId, message.id!))) {
+              console.log(`Skipping already embedded email ${message.id}`);
+              processedCount++;
+              return null;
+            } else {
+              console.log(`Embedding email ${message.id}`);
+            }
 
-          // Skip if already embedded
-          if (!ignoreCache && (await isEmailEmbedded(userId, message.id!))) {
-            console.log(`Skipping already embedded email ${message.id}`);
-            continue;
-          }
-          const fullEmail = await gmailClient.users.messages.get({
-            userId: "me",
-            id: message.id!,
-            format: "full",
-          });
-          const cleanedEmail = await parseGmailEmail(
-            fullEmail.data,
-            gmailClient,
-            userEmail
-          );
-
-          // Empty emails or unsubscribe emails are skipped
-          if (
-            cleanedEmail.bodyWithoutThread.trim() === "" ||
-            isUnsubscribeEmail(
-              cleanedEmail.headers.subject,
-              cleanedEmail.headers.to,
-              cleanedEmail.bodyWithoutThread
-            )
-          ) {
-            continue;
-          }
-          // Add to batch for vector indexing
-          const emailVector: Vector = {
-            id: cleanedEmail.messageId,
-            vector: await embedEmail(cleanedEmail),
-            attributes: {
-              subject: cleanedEmail.headers.subject,
-              date: cleanedEmail.headers.date,
-              to: cleanedEmail.headers.to,
-              content: cleanedEmail.bodyWithoutThread,
-              sent: cleanedEmail.sent,
-              message_id: cleanedEmail.messageId,
-              thread_id: cleanedEmail.threadId,
-              from: cleanedEmail.headers.from,
-              cc: cleanedEmail.headers.cc,
-              bcc: cleanedEmail.headers.bcc,
-              reply_to: cleanedEmail.headers.reply_to,
-              labels: cleanedEmail.labels,
-            },
-          };
-          emailVectors.push(emailVector);
-
-          // pause for an audit
-          if (Math.random() * 100 < sampleRate) {
-            console.log("=".repeat(80));
-            console.log(cleanedEmail.llmFormatted);
-            console.log("=".repeat(80));
-            console.log("\n");
-            await promptToContinue(
-              "Press Enter to mark this email reviewed or q to quit"
+            const fullEmail = await gmailClient.users.messages.get({
+              userId: "me",
+              id: message.id!,
+              format: "full",
+            });
+            const cleanedEmail = await parseGmailEmail(
+              fullEmail.data,
+              gmailClient,
+              userEmail
             );
-          }
 
-          processedCount++;
-        }
+            // Empty emails or unsubscribe emails are skipped
+            if (
+              cleanedEmail.bodyWithoutThread.trim() === "" ||
+              isUnsubscribeEmail(
+                cleanedEmail.headers.subject,
+                cleanedEmail.headers.to,
+                cleanedEmail.bodyWithoutThread
+              )
+            ) {
+              return null;
+            }
+
+            // Add to batch for vector indexing
+            const emailVector: Vector = {
+              id: cleanedEmail.messageId,
+              vector: await embedEmail(cleanedEmail, options.model),
+              attributes: {
+                subject: cleanedEmail.headers.subject,
+                date: cleanedEmail.headers.date,
+                to: cleanedEmail.headers.to,
+                content: cleanedEmail.bodyWithoutThread,
+                sent: cleanedEmail.sent,
+                message_id: cleanedEmail.messageId,
+                thread_id: cleanedEmail.threadId,
+                from: cleanedEmail.headers.from,
+                cc: cleanedEmail.headers.cc,
+                bcc: cleanedEmail.headers.bcc,
+                reply_to: cleanedEmail.headers.reply_to,
+                labels: cleanedEmail.labels,
+              },
+            };
+
+            // pause for an audit
+            if (Math.random() * 100 < sampleRate) {
+              console.log("=".repeat(80));
+              console.log(cleanedEmail.llmFormatted);
+              console.log("=".repeat(80));
+              console.log("\n");
+              await promptToContinue(
+                "Press Enter to mark this email reviewed or q to quit"
+              );
+            }
+
+            processedCount++;
+            return emailVector;
+          },
+          {
+            concurrency: 5, // Process 5 emails in parallel
+            stopOnError: false,
+          }
+        );
+
+        // Filter out null values and prepare for upsert
+        const validEmailVectors = emailVectors.filter(
+          (v): v is Vector => v !== null
+        );
 
         // Upsert batch of emails to the vector index
-        if (emailVectors.length > 0) {
+        if (validEmailVectors.length > 0) {
           await ns.upsert({
-            vectors: emailVectors,
+            vectors: validEmailVectors,
             distance_metric: "cosine_distance",
             schema: {
               subject: {
@@ -236,9 +259,8 @@ program
             },
           });
           // Mark emails as embedded
-          for (const emailVector of emailVectors) {
+          for (const emailVector of validEmailVectors) {
             await markEmailAsEmbedded(userId, emailVector.id.toString());
-            console.log(`Embedded email ${emailVector.id}`);
           }
         }
 
@@ -341,7 +363,12 @@ program
   .description("Search for similar emails")
   .option("-u, --user-id <id>", "Clerk user ID")
   .option("-q, --query <query>", "Gmail search query")
-  .option("-m, --message-id <id>", "RFC 822 message ID header")
+  .option("--message-id <id>", "RFC 822 message ID header")
+  .option(
+    "-m, --model <model>",
+    "Embedding model to use (openai/* for OpenAI models or voyage/* for Voyage models)",
+    "voyage/voyage-3-large"
+  )
   .action(async (options) => {
     // Get user ID from command line arguments
     const userId = options.userId;
@@ -414,7 +441,7 @@ program
       );
 
       // Get vector for the email
-      const vector = await embedEmail(cleanedEmail);
+      const vector = await embedEmail(cleanedEmail, options.model);
 
       console.log("\nSearching for emails similar to:\n");
       console.log("=".repeat(80));
@@ -455,6 +482,24 @@ program
     }
   });
 
+// Namespace management commands
+program
+  .command("ns")
+  .description("Namespace management commands")
+  .command("delete")
+  .description("Delete a Turbopuffer namespace")
+  .argument("<namespace>", "Name of the namespace to delete")
+  .action(async (namespace) => {
+    try {
+      const ns = tpuf.namespace(namespace);
+      await ns.deleteAll();
+      console.log(`Successfully deleted namespace: ${namespace}`);
+    } catch (error) {
+      console.error("Error deleting namespace:", error);
+      process.exit(1);
+    }
+  });
+
 // SQLite database setup
 const db = new Database("scripts/turbopuffer.db");
 
@@ -491,13 +536,53 @@ async function markEmailAsEmbedded(userId: string, messageId: string) {
   stmt.run(userId, messageId);
 }
 
+// Initialize embeddings cache
+let embeddingsCache: Map<string, OpenAIEmbeddings | VoyageEmbeddings> =
+  new Map();
+
+function embeddings(model: string): OpenAIEmbeddings | VoyageEmbeddings {
+  // Check cache first
+  if (embeddingsCache.has(model)) {
+    return embeddingsCache.get(model)!;
+  }
+
+  const [provider, modelName] = model.split("/");
+  if (!provider || !modelName) {
+    throw new Error(
+      `Invalid model format. Expected provider/model-name, got: ${model}`
+    );
+  }
+
+  let embedder: OpenAIEmbeddings | VoyageEmbeddings;
+  switch (provider.toLowerCase()) {
+    case "openai":
+      embedder = new OpenAIEmbeddings({
+        modelName,
+        openAIApiKey: process.env.OPENAI_API_KEY,
+      });
+      break;
+    case "voyage":
+      embedder = new VoyageEmbeddings({
+        apiKey: process.env.VOYAGEAI_API_KEY,
+        modelName,
+      });
+      break;
+    default:
+      throw new Error(
+        `Unsupported model provider: ${provider}. Must be either 'openai' or 'voyage'`
+      );
+  }
+
+  // Cache the embedder instance
+  embeddingsCache.set(model, embedder);
+  return embedder;
+}
+
+// Update the embeddings initialization to use the model parameter
 const clerkClient = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY,
 });
-const embeddings = new OpenAIEmbeddings({
-  modelName: "text-embedding-3-small",
-  openAIApiKey: process.env.OPENAI_API_KEY,
-});
+
 const tpuf = new Turbopuffer({
   apiKey: process.env.TURBOPUFFER_API_KEY!,
   baseUrl: "https://gcp-us-central1.turbopuffer.com",
@@ -522,42 +607,57 @@ function averageVectors(vectors: number[][]): number[] {
   return result;
 }
 
-// Helper function to get email vector embedding
-async function embedText(text: string): Promise<number[]> {
+const maxInputForModel = {
+  "openai/text-embedding-3-small": 8192,
+  "openai/text-embedding-3-large": 8192,
+  "openai/text-embedding-ada-002": 8192,
+  "voyage/voyage-3-large": 32000,
+  "voyage/voyage-3-lite": 32000,
+  "voyage/voyage-3": 32000,
+};
+
+// Update embedText to initialize embeddings with the model parameter
+async function embedText(text: string, model: string): Promise<number[]> {
+  // Initialize embeddings if not already done
+  const embedder = embeddings(model);
+
   // Initialize tiktoken encoder for the embedding model
   const encoder = encoding_for_model("text-embedding-3-small");
 
   const textSplitter = new RecursiveCharacterTextSplitter({
-    chunkSize: 1000, // Maximum tokens per chunk
-    chunkOverlap: 200, // 20% overlap to preserve context
-    separators: ["\n\n", "\n", " ", ""], // Logical split points
+    // Set chunk size to roughly 1/4 of the model's max input size to allow for overlap
+    // and ensure we stay well within limits even with metadata
+    chunkSize: Math.floor(
+      maxInputForModel[model as keyof typeof maxInputForModel] / 4
+    ),
+    // Set overlap to 15% of chunk size
+    chunkOverlap: Math.floor(
+      (maxInputForModel[model as keyof typeof maxInputForModel] / 4) * 0.15
+    ),
+    separators: ["\n\n", "\n", " ", ""],
     lengthFunction: (text: string) => {
-      // Get accurate token count using tiktoken
       const tokens = encoder.encode(text);
       return tokens.length;
     },
   });
 
   try {
-    // Split the text into chunks
     const chunks = await textSplitter.createDocuments([text]);
-
-    // Generate embeddings for each chunk
-    const vectorStore = await embeddings.embedDocuments(
+    const vectorStore = await embedder.embedDocuments(
       chunks.map((chunk: { pageContent: string }) => chunk.pageContent)
     );
-
-    // Average the vectors into a single vector
     return averageVectors(vectorStore);
   } finally {
-    // Don't forget to free the encoder when done
     encoder.free();
   }
 }
 
-// Helper function to get email vector embedding from cleaned data
-async function embedEmail(cleanedEmail: ParsedGmailEmail): Promise<number[]> {
-  return await embedText(cleanedEmail.llmFormatted);
+// Update embedEmail to pass through the model parameter
+async function embedEmail(
+  cleanedEmail: ParsedGmailEmail,
+  model: string
+): Promise<number[]> {
+  return await embedText(cleanedEmail.llmFormatted, model);
 }
 
 function setupEmailNamespace(userId: string): Namespace {

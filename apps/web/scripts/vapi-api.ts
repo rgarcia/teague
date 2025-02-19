@@ -37,6 +37,12 @@ if (systemPromptGet.fetchResult !== "success") {
   systemPrompt = systemPromptEntry.content;
 }
 
+writeFileSync(
+  path.join("scripts", "system-prompt.md"),
+  "<!-- DO NOT EDIT - This file is automatically synced down from Langfuse (that is where edits should be made) -->\n\n" +
+    systemPrompt
+);
+
 // when dev'ing locally. TODO: make a separate assistant + tools for this
 // const WEB_BASE_URL = "https://raf--cannon.ngrok.app";
 const WEB_BASE_URL = "https://prod--web.raf.xyz";
@@ -97,6 +103,16 @@ async function updateAssistant(toolIds: string[]) {
       ],
       toolIds: toolIds,
     },
+    startSpeakingPlan: {
+      smartEndpointingEnabled: true,
+      waitSeconds: 0.8,
+    },
+    backgroundSound: "off",
+    stopSpeakingPlan: {
+      numWords: 3,
+    },
+    modelOutputInMessagesEnabled: true,
+    backgroundDenoisingEnabled: true,
     //firstMessageMode: "assistant-speaks-first-with-model-generated-message",
     firstMessage: "Let's go through  your inbox.",
     voicemailMessage: "Hey this is Ava, can you call me back when you're free?",

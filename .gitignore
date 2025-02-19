@@ -1,10 +1,9 @@
 **/*/.env
 .env.sst
 sst-env.d.ts
-# google cloud auth stuff
-packages/auth/credentials.json
-packages/auth/token.json
-apps/cli/speech-credentials.json
+apps/web/scripts/*.db
+apps/web/scripts/system-prompt.md
+apps/web/scripts/dumps/
 
 # my todos
 TODO

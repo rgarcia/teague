@@ -1,4 +1,4 @@
-import { openai } from "@ai-sdk/openai";
+import { google } from "@ai-sdk/google";
 import { getAuth } from "@clerk/tanstack-start/server";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { NodeSDK } from "@opentelemetry/sdk-node";
@@ -66,7 +66,9 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
     const googleToken = clerkRes.data[0].token;
     const { messages } = await request.json();
     const result = streamText({
-      model: openai("gpt-4o-mini"),
+      //      model: openai("gpt-4o-mini"),
+      // @ts-ignore type error here for whatever reason
+      model: google("gemini-2.0-flash-001"),
       system: systemPrompt.compile().find((p) => p.role === "system")?.content,
       messages,
       maxSteps: 10,

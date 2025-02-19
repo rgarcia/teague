@@ -113,16 +113,20 @@ function ChatComponent() {
 
   return (
     <SignedIn>
+      {/* <div className="grid h-dvh grid-cols-[200px_1fr] gap-x-2 px-4 py-72"> */}
+      {/* <ThreadList /> */}
       <AssistantRuntimeProvider runtime={runtime}>
-        <div className="grid h-dvh grid-cols-1 gap-x-2 px-4 py-72">
-          <NextEmailToolUI />
-          <ArchiveEmailToolUI />
-          <FilterSenderToolUI />
-          <AcceptInviteToolUI />
-          <UnsubscribeToolUI />
-          {/* <div className="grid h-dvh grid-cols-[200px_1fr] gap-x-2 px-4 py-72"> */}
-          {/* <ThreadList /> */}
-          <Thread />
+        <div className="h-dvh flex flex-col p-4">
+          <div className="flex gap-2 mb-4">
+            <NextEmailToolUI />
+            <ArchiveEmailToolUI />
+            <FilterSenderToolUI />
+            <AcceptInviteToolUI />
+            <UnsubscribeToolUI />
+          </div>
+          <div className="flex-1 overflow-auto">
+            <Thread />
+          </div>
         </div>
       </AssistantRuntimeProvider>
     </SignedIn>
