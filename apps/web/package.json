@@ -47,7 +47,6 @@
     "tailwindcss-animate": "^1.0.7",
     "turndown": "^7.2.0",
     "vinxi": "^0.5.3",
-    "voyage": "link:@langchain/community/embeddings/voyage",
     "zod": "^3.24.2"
   },
   "devDependencies": {
