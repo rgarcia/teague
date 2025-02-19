@@ -92,8 +92,10 @@ async function updateAssistant(toolIds: string[]) {
 
   const updateRes = await client.assistants.update(teague.id, {
     model: {
-      provider: "openai",
-      model: "gpt-4o",
+      // provider: "openai",
+      // model: "gpt-4o",
+      provider: "google",
+      model: "gemini-2.0-flash",
       temperature: 0.7,
       messages: [
         {
