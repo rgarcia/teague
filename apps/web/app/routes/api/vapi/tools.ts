@@ -60,7 +60,6 @@ export const APIRoute = createAPIFileRoute("/api/vapi/tools")({
       const googleToken = clerkRes.data[0].token;
 
       const msg = (await request.json()) as Vapi.ServerMessage;
-      console.log("VAPI SERVER MSG", JSON.stringify(msg, null, 2));
       if (msg.message.type !== "tool-calls") {
         return createErrorResponse(
           `Invalid message type ${msg.message.type}`,
@@ -69,6 +68,7 @@ export const APIRoute = createAPIFileRoute("/api/vapi/tools")({
       }
 
       const toolCalls = msg.message.toolCallList;
+      console.log("VAPI SERVER MSG", JSON.stringify(toolCalls, null, 2));
       const results: Vapi.ToolCallResult[] = [];
       const context: RequestContext = {
         googleToken,
