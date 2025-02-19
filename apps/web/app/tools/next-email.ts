@@ -48,6 +48,7 @@ export const nextEmailConfig: BaseToolConfig<
     }
 
     try {
+      console.log("FETCH EMAILS", { query, nextPageToken });
       const response = await fetchEmails({
         googleToken: context.googleToken,
         maxResults: 1,
