@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { unsubscribeEmail } from "~/utils/gmail";
+import { archiveEmail, unsubscribeEmail } from "~/utils/gmail";
 import type { BaseToolConfig } from "~/utils/tools/registry";
 
 const unsubscribeSchema = z.object({
@@ -31,7 +31,10 @@ export const unsubscribeConfig: BaseToolConfig<
     if (!context.googleToken) {
       throw new Error("Google token is required for this operation");
     }
-
+    archiveEmail({
+      googleToken: context.googleToken,
+      messageId,
+    });
     return await unsubscribeEmail({
       googleToken: context.googleToken,
       messageId,
