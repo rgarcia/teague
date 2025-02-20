@@ -64,6 +64,7 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
           },
         },
       });
+      console.log("DEBUG result", result);
       return result.toDataStreamResponse();
     } catch (error) {
       console.error("Error in chat endpoint:", error);
