@@ -48,6 +48,18 @@ export default $config({
       openai: {
         apiKey: new sst.Secret("OpenAIApiKey"),
       },
+      voyageai: {
+        apiKey: new sst.Secret("VoyageAIKey"),
+      },
+      turbopuffer: {
+        apiKey: new sst.Secret("TurbopufferKey"),
+      },
+      googleGenerativeAI: {
+        apiKey: new sst.Secret("GoogleGenerativeAIKey"),
+      },
+      vapi: {
+        apiKey: new sst.Secret("VapiKey"),
+      },
     };
     const vars = [
       {
@@ -77,6 +89,22 @@ export default $config({
       {
         name: "OPENAI_API_KEY",
         value: secrets.openai.apiKey.value,
+      },
+      {
+        name: "VOYAGEAI_API_KEY",
+        value: secrets.voyageai.apiKey.value,
+      },
+      {
+        name: "TURBOPUFFER_API_KEY",
+        value: secrets.turbopuffer.apiKey.value,
+      },
+      {
+        name: "GOOGLE_GENERATIVE_AI_API_KEY",
+        value: secrets.googleGenerativeAI.apiKey.value,
+      },
+      {
+        name: "VAPI_API_KEY",
+        value: secrets.vapi.apiKey.value,
       },
       {
         name: "PORT",
