@@ -61,12 +61,11 @@ export const APIRoute = createAPIFileRoute("/api/vapi/tools")({
         );
       }
 
-      const clerkRes = await clerk.users.getUserOauthAccessToken(
-        userId,
-        "google"
-      );
+      const [user, clerkRes] = await Promise.all([
+        clerk.users.getUser(userId),
+        clerk.users.getUserOauthAccessToken(userId, "google"),
+      ]);
       const googleToken = clerkRes.data[0].token;
-
       const msg = (await request.json()) as Vapi.ServerMessage;
       if (msg.message.type !== "tool-calls") {
         return createErrorResponse(
@@ -79,6 +78,7 @@ export const APIRoute = createAPIFileRoute("/api/vapi/tools")({
       const results: Vapi.ToolCallResult[] = [];
       const context: RequestContext = {
         googleToken,
+        user,
       };
       for (const toolCall of toolCalls) {
         if (toolCall.type !== "function") {
