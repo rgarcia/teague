@@ -1,4 +1,5 @@
-import { google } from "@ai-sdk/google";
+// import { google } from "@ai-sdk/google";
+import { openai } from "@ai-sdk/openai";
 import { getAuth } from "@clerk/tanstack-start/server";
 import { json } from "@tanstack/start";
 import { createAPIFileRoute } from "@tanstack/start/api";
@@ -34,13 +35,11 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
       ]);
       const googleToken = clerkRes.data[0].token;
       const { messages } = await request.json();
-      if (messages.find((m: any) => m.role === "system")) {
-        console.log("DEBUG UNEXPECTED SYSTEM MESSAGE in messages");
-      }
       const result = streamText({
         // @ts-ignore type error here for whatever reason
         //model: google("gemini-2.0-flash"),
-        model: google("gemini-2.0-flash-001"),
+        //model: google("gemini-2.0-flash-001"),
+        model: openai("gpt-4o"),
         system: systemPrompt.compile().find((p) => p.role === "system")
           ?.content,
         messages,
@@ -86,7 +85,11 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
           },
         },
       });
-      return result.toDataStreamResponse();
+      return result.toDataStreamResponse({
+        getErrorMessage: (error) => {
+          return `Internal server error: ${error}`;
+        },
+      });
     } catch (error) {
       console.error("Error in chat endpoint:", error);
       return json(
