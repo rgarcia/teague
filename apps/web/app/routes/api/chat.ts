@@ -40,6 +40,7 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
         system: systemPrompt.compile().find((p) => p.role === "system")
           ?.content,
         messages,
+        maxRetries: 5,
         maxSteps: 10,
         tools: Object.fromEntries(
           registry.getAllTools().map((t) => {
@@ -49,8 +50,17 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
                 description: t.description,
                 parameters: t.parameters,
                 execute: async (params) => {
-                  const result = await t.execute(params, { googleToken, user });
-                  return result;
+                  try {
+                    const result = await t.execute(params, {
+                      googleToken,
+                      user,
+                    });
+                    console.log("DEBUG tool result", result);
+                    return result;
+                  } catch (error) {
+                    console.error("Error in tool execution:", error);
+                    throw error;
+                  }
                 },
               }),
             ];
@@ -64,7 +74,6 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
           },
         },
       });
-      console.log("DEBUG result", result);
       return result.toDataStreamResponse();
     } catch (error) {
       console.error("Error in chat endpoint:", error);
