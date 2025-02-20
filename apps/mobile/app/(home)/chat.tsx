@@ -188,6 +188,14 @@ function inProgressText(toolName: string) {
       return "Accepting calendar invite";
     case "Unsubscribe":
       return "Unsubscribing from sender";
+    case "CreateDraftReply":
+      return "Creating draft reply";
+    case "UpdateDraftReply":
+      return "Updating draft reply";
+    case "DeleteDraft":
+      return "Deleting draft reply";
+    case "SendDraft":
+      return "Sending draft";
     default:
       return toolName;
   }
@@ -273,6 +281,30 @@ const MessageItem = ({ message }: { message: CondensedMessage }) => {
             </View>
           );
         }
+        case "CreateDraftReply":
+          return (
+            <Text style={themedStyles.messageText}>
+              {result.success ? "✓ Draft created" : "⚠️ Failed to create draft"}
+            </Text>
+          );
+        case "UpdateDraftReply":
+          return (
+            <Text style={themedStyles.messageText}>
+              {result.success ? "✓ Draft updated" : "⚠️ Failed to update draft"}
+            </Text>
+          );
+        case "DeleteDraft":
+          return (
+            <Text style={themedStyles.messageText}>
+              {result.success ? "✓ Draft deleted" : "⚠️ Failed to delete draft"}
+            </Text>
+          );
+        case "SendDraft":
+          return (
+            <Text style={themedStyles.messageText}>
+              {result.success ? "✓ Draft sent" : "⚠️ Failed to send draft"}
+            </Text>
+          );
 
         default:
           return (

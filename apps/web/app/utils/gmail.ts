@@ -604,3 +604,56 @@ export async function unsubscribeEmail(
 
   return { success: true };
 }
+
+export type FormatDraftReplyInput = {
+  originalMessage: gmail_v1.Schema$Message;
+  body: string;
+  userEmail: string;
+};
+
+export function formatDraftReply({
+  originalMessage,
+  body,
+  userEmail,
+}: FormatDraftReplyInput): string {
+  if (!originalMessage.payload?.headers) {
+    throw new Error("Original message has no headers");
+  }
+
+  const getHeader = (name: string) =>
+    originalMessage.payload?.headers?.find(
+      (h: gmail_v1.Schema$MessagePartHeader) =>
+        h.name?.toLowerCase() === name.toLowerCase()
+    )?.value || "";
+
+  let toArr: string[] = [getHeader("From")];
+  if (getHeader("To")) {
+    // split on comma and remove self
+    const tos = getHeader("To")
+      .split(",")
+      .map((t) => t.trim())
+      .filter((t) => !t.includes(userEmail));
+    toArr.push(...tos);
+  }
+  const to = toArr.join(", ");
+  const cc = getHeader("Cc");
+  const subject = getHeader("Subject");
+  const replySubject = subject.startsWith("Re:") ? subject : `Re: ${subject}`;
+  const references = getHeader("References");
+  const inReplyTo = getHeader("In-Reply-To");
+
+  const rawMessage = Buffer.from(
+    `To: ${to}\r\n` +
+      `${cc ? `Cc: ${cc}\r\n` : ""}` +
+      `Subject: ${replySubject}\r\n` +
+      `${inReplyTo ? `In-Reply-To: ${inReplyTo}\r\n` : ""}` +
+      `${references ? `References: ${references}\r\n` : ""}` +
+      `Content-Type: text/plain; charset="UTF-8"\r\n\r\n` +
+      body
+  )
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+
+  return rawMessage;
+}

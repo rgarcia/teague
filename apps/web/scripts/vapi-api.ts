@@ -2,12 +2,7 @@ import { VapiClient } from "@vapi-ai/server-sdk";
 import { mkdirSync, writeFileSync } from "fs";
 import { Langfuse } from "langfuse";
 import path from "path";
-import { acceptInviteConfig } from "~/tools/accept-invite";
-import { archiveEmailConfig } from "~/tools/archive-email";
-import { filterSenderConfig } from "~/tools/filter-sender";
-import { nextEmailConfig } from "~/tools/next-email";
-import { unsubscribeConfig } from "~/tools/unsubscribe";
-import { ToolRegistryManager } from "~/utils/tools/registry";
+import toolRegistry from "~/utils/tools/all-tools";
 import { createVapiToolDefinition } from "~/utils/tools/vapi-adapter";
 
 const client = new VapiClient({ token: process.env.VAPI_API_KEY });
@@ -46,15 +41,6 @@ writeFileSync(
 // when dev'ing locally. TODO: make a separate assistant + tools for this
 // const WEB_BASE_URL = "https://raf--cannon.ngrok.app";
 const WEB_BASE_URL = "https://prod--web.raf.xyz";
-
-// Create and populate the registry
-// Add more tools here as they are created
-const registry = new ToolRegistryManager();
-registry.registerTool(acceptInviteConfig);
-registry.registerTool(archiveEmailConfig);
-registry.registerTool(filterSenderConfig);
-registry.registerTool(nextEmailConfig);
-registry.registerTool(unsubscribeConfig);
 
 async function dumpState(timestamp: string, prefix: string) {
   const tools = await client.tools.list();
@@ -95,6 +81,7 @@ async function updateAssistant(toolIds: string[]) {
       // provider: "openai",
       // model: "gpt-4o",
       provider: "google",
+      // @ts-ignore
       model: "gemini-2.0-flash",
       temperature: 0.7,
       messages: [
@@ -176,7 +163,7 @@ async function updateTools(): Promise<string[]> {
   );
 
   const toolIds: string[] = [];
-  const registeredTools = registry.getAllTools();
+  const registeredTools = toolRegistry.getAllTools();
 
   for (const tool of registeredTools) {
     const existingTool = tools.find((t) => t.function?.name === tool.name);

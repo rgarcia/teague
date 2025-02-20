@@ -6,6 +6,7 @@
   "scripts": {
     "sync-vapi": "tsx --env-file=.env scripts/vapi-api.ts",
     "turbopuffer": "tsx --env-file=.env scripts/turbopuffer.ts",
+    "tools": "tsx --env-file=.env scripts/tools.ts",
     "test": "jest",
     "dev": "vinxi dev --host",
     "build": "vinxi build",

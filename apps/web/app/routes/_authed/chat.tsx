@@ -9,6 +9,16 @@ import { ArchiveEmailInput, ArchiveEmailOutput } from "~/tools/archive-email";
 import { FilterSenderInput, FilterSenderOutput } from "~/tools/filter-sender";
 import { AcceptInviteInput, AcceptInviteOutput } from "~/tools/accept-invite";
 import { UnsubscribeInput, UnsubscribeOutput } from "~/tools/unsubscribe";
+import {
+  CreateDraftReplyInput,
+  CreateDraftReplyOutput,
+} from "~/tools/create-draft-reply";
+import {
+  UpdateDraftReplyInput,
+  UpdateDraftReplyOutput,
+} from "~/tools/update-draft-reply";
+import { SendDraftInput, SendDraftOutput } from "~/tools/send-draft";
+import { DeleteDraftInput, DeleteDraftOutput } from "~/tools/delete-draft";
 import { CheckIcon, LoaderIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SignedIn } from "@clerk/tanstack-start";
@@ -106,6 +116,41 @@ const UnsubscribeToolUI = createSimpleToolUI<
   completedMessage: "Unsubscribed from sender",
 });
 
+const CreateDraftReplyToolUI = createSimpleToolUI<
+  CreateDraftReplyInput,
+  CreateDraftReplyOutput
+>({
+  toolName: "CreateDraftReply",
+  runningMessage: "Creating draft reply...",
+  completedMessage: (args, result) =>
+    `Created draft reply: ${result?.body.substring(0, 50)}...`,
+});
+
+const UpdateDraftReplyToolUI = createSimpleToolUI<
+  UpdateDraftReplyInput,
+  UpdateDraftReplyOutput
+>({
+  toolName: "UpdateDraftReply",
+  runningMessage: "Updating draft reply...",
+  completedMessage: (args, result) =>
+    `Updated draft reply: ${result?.body.substring(0, 50)}...`,
+});
+
+const SendDraftToolUI = createSimpleToolUI<SendDraftInput, SendDraftOutput>({
+  toolName: "SendDraft",
+  runningMessage: "Sending draft...",
+  completedMessage: "Sent draft successfully",
+});
+
+const DeleteDraftToolUI = createSimpleToolUI<
+  DeleteDraftInput,
+  DeleteDraftOutput
+>({
+  toolName: "DeleteDraft",
+  runningMessage: "Deleting draft...",
+  completedMessage: "Deleted draft successfully",
+});
+
 function ChatComponent() {
   const runtime = useChatRuntime({
     api: "/api/chat",
@@ -116,13 +161,17 @@ function ChatComponent() {
       {/* <div className="grid h-dvh grid-cols-[200px_1fr] gap-x-2 px-4 py-72"> */}
       {/* <ThreadList /> */}
       <AssistantRuntimeProvider runtime={runtime}>
-        <div className="h-dvh flex flex-col p-4">
+        <div className="h-dvh flex flex-col p-12">
           <div className="flex gap-2 mb-4">
             <NextEmailToolUI />
             <ArchiveEmailToolUI />
             <FilterSenderToolUI />
             <AcceptInviteToolUI />
             <UnsubscribeToolUI />
+            <CreateDraftReplyToolUI />
+            <UpdateDraftReplyToolUI />
+            <SendDraftToolUI />
+            <DeleteDraftToolUI />
           </div>
           <div className="flex-1 overflow-auto">
             <Thread />
