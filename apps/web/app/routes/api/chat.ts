@@ -39,14 +39,21 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
       }
       const result = streamText({
         // @ts-ignore type error here for whatever reason
-        model: google("gemini-2.0-flash"),
+        //model: google("gemini-2.0-flash"),
+        model: google("gemini-2.0-flash-001"),
         system: systemPrompt.compile().find((p) => p.role === "system")
           ?.content,
         messages,
         maxRetries: 5,
         maxSteps: 10,
-        onStepFinish: (stepResult) => {
-          console.log("DEBUG stepResult", JSON.stringify(stepResult, null, 2));
+        onStepFinish: ({ stepType, response: { messages } }) => {
+          console.log(
+            "DEBUG stepResult",
+            JSON.stringify({
+              stepType,
+              response: { messages },
+            })
+          );
         },
         tools: Object.fromEntries(
           registry.getAllTools().map((t) => {
