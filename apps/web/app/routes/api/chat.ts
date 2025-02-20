@@ -34,6 +34,9 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
       ]);
       const googleToken = clerkRes.data[0].token;
       const { messages } = await request.json();
+      if (messages.find((m: any) => m.role === "system")) {
+        console.log("DEBUG UNEXPECTED SYSTEM MESSAGE in messages");
+      }
       const result = streamText({
         // @ts-ignore type error here for whatever reason
         model: google("gemini-2.0-flash"),
@@ -42,6 +45,9 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
         messages,
         maxRetries: 5,
         maxSteps: 10,
+        onStepFinish: (stepResult) => {
+          console.log("DEBUG stepResult", JSON.stringify(stepResult, null, 2));
+        },
         tools: Object.fromEntries(
           registry.getAllTools().map((t) => {
             return [
@@ -55,7 +61,6 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
                       googleToken,
                       user,
                     });
-                    console.log("DEBUG tool result", result);
                     return result;
                   } catch (error) {
                     console.error("Error in tool execution:", error);
