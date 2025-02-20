@@ -283,15 +283,19 @@ const MessageItem = ({ message }: { message: CondensedMessage }) => {
         }
         case "CreateDraftReply":
           return (
-            <Text style={themedStyles.messageText}>
-              {result.success ? "✓ Draft created" : "⚠️ Failed to create draft"}
-            </Text>
+            <View style={themedStyles.emailPreview}>
+              <Text style={themedStyles.messageText}>
+                {result.body ? result.body : "⚠️ Failed to create draft"}
+              </Text>
+            </View>
           );
         case "UpdateDraftReply":
           return (
-            <Text style={themedStyles.messageText}>
-              {result.success ? "✓ Draft updated" : "⚠️ Failed to update draft"}
-            </Text>
+            <View style={themedStyles.emailPreview}>
+              <Text style={themedStyles.messageText}>
+                {result.body ? result.body.trim() : "⚠️ Failed to update draft"}
+              </Text>
+            </View>
           );
         case "DeleteDraft":
           return (
@@ -302,7 +306,7 @@ const MessageItem = ({ message }: { message: CondensedMessage }) => {
         case "SendDraft":
           return (
             <Text style={themedStyles.messageText}>
-              {result.success ? "✓ Draft sent" : "⚠️ Failed to send draft"}
+              {result.messageId ? "✓ Draft sent" : "⚠️ Failed to send draft"}
             </Text>
           );
 
