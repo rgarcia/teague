@@ -91,7 +91,7 @@ export default $config({
         value: secrets.openai.apiKey.value,
       },
       {
-        name: "VOYAGEAI_API_KEY",
+        name: "VOYAGE_API_KEY",
         value: secrets.voyageai.apiKey.value,
       },
       {
