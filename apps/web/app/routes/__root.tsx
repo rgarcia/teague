@@ -5,6 +5,7 @@ import {
   Link,
   Outlet,
   createRootRoute,
+  createRootRouteWithContext,
 } from "@tanstack/react-router";
 import {
   ClerkProvider,
@@ -25,6 +26,8 @@ import { createClerkClient } from "@clerk/backend";
 const clerk = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY,
 });
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import type { QueryClient } from '@tanstack/react-query'
 
 const fetchClerkAuth = createServerFn({ method: "GET" }).handler(async () => {
   const { userId } = await getAuth(getWebRequest()!);
@@ -39,7 +42,9 @@ const fetchClerkAuth = createServerFn({ method: "GET" }).handler(async () => {
   };
 });
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<{
+  queryClient: QueryClient;
+}>()({
   head: () => ({
     meta: [
       {
@@ -138,7 +143,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <hr />
         {children}
         {process.env.NODE_ENV === "development" && (
-          <TanStackRouterDevtools position="bottom-right" />
+          <>
+            <ReactQueryDevtools buttonPosition="bottom-left" />
+            <TanStackRouterDevtools position="bottom-right" />
+          </>
         )}
         <Scripts />
       </body>
