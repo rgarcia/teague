@@ -26,8 +26,9 @@ import { createClerkClient } from "@clerk/backend";
 const clerk = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY,
 });
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import type { QueryClient } from '@tanstack/react-query'
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import type { QueryClient } from "@tanstack/react-query";
+import { Toaster } from "sonner";
 
 const fetchClerkAuth = createServerFn({ method: "GET" }).handler(async () => {
   const { userId } = await getAuth(getWebRequest()!);
@@ -113,7 +114,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <div className="p-2 flex gap-2 text-lg">
+        <Toaster position="top-center" />
+        {/* <div className="p-2 flex gap-2 text-lg">
           <Link
             to="/"
             activeProps={{
@@ -140,7 +142,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             </SignedOut>
           </div>
         </div>
-        <hr />
+        <hr /> */}
         {children}
         {process.env.NODE_ENV === "development" && (
           <>
