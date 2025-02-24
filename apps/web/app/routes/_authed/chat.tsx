@@ -1,177 +1,135 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AssistantRuntimeProvider } from "@assistant-ui/react";
+import { AssistantRuntimeProvider, ThreadList, ThreadMessage, unstable_useRemoteThreadListRuntime as useRemoteThreadListRuntime, useThreadListItem} from "@assistant-ui/react";
 import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
 // import { ThreadList } from "@/components/assistant-ui/thread-list";
 import { Thread } from "@/components/assistant-ui/thread";
-import { makeAssistantToolUI } from "@assistant-ui/react";
-import { NextEmailInput, NextEmailOutput } from "~/tools/next-email";
-import { ArchiveEmailInput, ArchiveEmailOutput } from "~/tools/archive-email";
-import { FilterSenderInput, FilterSenderOutput } from "~/tools/filter-sender";
-import { AcceptInviteInput, AcceptInviteOutput } from "~/tools/accept-invite";
-import { UnsubscribeInput, UnsubscribeOutput } from "~/tools/unsubscribe";
-import {
-  CreateDraftReplyInput,
-  CreateDraftReplyOutput,
-} from "~/tools/create-draft-reply";
-import {
-  UpdateDraftReplyInput,
-  UpdateDraftReplyOutput,
-} from "~/tools/update-draft-reply";
-import { SendDraftInput, SendDraftOutput } from "~/tools/send-draft";
-import { DeleteDraftInput, DeleteDraftOutput } from "~/tools/delete-draft";
-import { CheckIcon, LoaderIcon } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { SignedIn } from "@clerk/tanstack-start";
+import { ToolUIs } from "~/components/TollUIs";
+import { useEffect, useRef } from "react";
+import { observable } from "@legendapp/state";
+import { useObservable } from "@legendapp/state/react";
+import { RemoteThreadListResponse, RemoteThreadInitializeResponse,  } from "node_modules/@assistant-ui/react/dist/runtimes/remote-thread-list/types";
 
 export const Route = createFileRoute("/_authed/chat")({
   component: ChatComponent,
 });
 
-// Helper function to create tool UIs with less boilerplate
-function createSimpleToolUI<TInput, TOutput>({
-  toolName,
-  runningMessage,
-  completedMessage,
-}: {
-  toolName: string;
-  runningMessage:
-    | string
-    | ((args: TInput, result: TOutput | undefined) => string);
-  completedMessage:
-    | string
-    | ((args: TInput, result: TOutput | undefined) => string);
-}) {
-  return makeAssistantToolUI<TInput, TOutput>({
-    toolName,
-    render: ({ args, status, result }) => {
-      const getMessage = (
-        message:
-          | string
-          | ((args: TInput, result: TOutput | undefined) => string)
-      ): string =>
-        typeof message === "function" ? message(args, result) : message;
-
-      return (
-        <Badge
-          variant="outline"
-          className="flex items-center gap-2 p-2 max-w-fit"
-        >
-          {status.type === "running" ? (
-            <>
-              <LoaderIcon size={16} className="animate-spin" />
-              <p>{getMessage(runningMessage)}</p>
-            </>
-          ) : (
-            <>
-              <CheckIcon color="green" size={16} />
-              <p>{getMessage(completedMessage)}</p>
-            </>
-          )}
-        </Badge>
-      );
-    },
-  });
-}
-
-// Tool UI definitions using the helper
-const NextEmailToolUI = createSimpleToolUI<NextEmailInput, NextEmailOutput>({
-  toolName: "GetNextEmail",
-  runningMessage: (args) => `Getting next email: "${args.query}"`,
-  completedMessage: (args) => `Got next email: "${args.query}"`,
+const useRuntimeCallbacks = observable({
+  initialize: (threadId: string) => {
+    console.log("initialize", threadId);
+  },
 });
 
-const ArchiveEmailToolUI = createSimpleToolUI<
-  ArchiveEmailInput,
-  ArchiveEmailOutput
->({
-  toolName: "ArchiveEmail",
-  runningMessage: "Archiving email",
-  completedMessage: "Archived email",
-});
 
-const FilterSenderToolUI = createSimpleToolUI<
-  FilterSenderInput,
-  FilterSenderOutput
->({
-  toolName: "FilterSender",
-  runningMessage: "Filtering sender from inbox",
-  completedMessage: "Filtered sender from inbox",
-});
-
-const AcceptInviteToolUI = createSimpleToolUI<
-  AcceptInviteInput,
-  AcceptInviteOutput
->({
-  toolName: "AcceptInvite",
-  runningMessage: "Accepting calendar invite",
-  completedMessage: "Accepted calendar invite",
-});
-
-const UnsubscribeToolUI = createSimpleToolUI<
-  UnsubscribeInput,
-  UnsubscribeOutput
->({
-  toolName: "Unsubscribe",
-  runningMessage: "Unsubscribing from sender",
-  completedMessage: "Unsubscribed from sender",
-});
-
-const CreateDraftReplyToolUI = createSimpleToolUI<
-  CreateDraftReplyInput,
-  CreateDraftReplyOutput
->({
-  toolName: "CreateDraftReply",
-  runningMessage: "Creating draft reply...",
-  completedMessage: (args, result) =>
-    `Created draft reply: ${result?.body.substring(0, 50)}...`,
-});
-
-const UpdateDraftReplyToolUI = createSimpleToolUI<
-  UpdateDraftReplyInput,
-  UpdateDraftReplyOutput
->({
-  toolName: "UpdateDraftReply",
-  runningMessage: "Updating draft reply...",
-  completedMessage: (args, result) =>
-    `Updated draft reply: ${result?.body.substring(0, 50)}...`,
-});
-
-const SendDraftToolUI = createSimpleToolUI<SendDraftInput, SendDraftOutput>({
-  toolName: "SendDraft",
-  runningMessage: "Sending draft...",
-  completedMessage: "Sent draft successfully",
-});
-
-const DeleteDraftToolUI = createSimpleToolUI<
-  DeleteDraftInput,
-  DeleteDraftOutput
->({
-  toolName: "DeleteDraft",
-  runningMessage: "Deleting draft...",
-  completedMessage: "Deleted draft successfully",
-});
-
-function ChatComponent() {
+// return a regular runtime here
+// this hook will be mounted once per thread
+const useMyRuntime = () => {
   const runtime = useChatRuntime({
     api: "/api/chat",
   });
+  const runtimeCallbacks = useObservable(useRuntimeCallbacks);
+
+  // when the thread is initialized (user sent the first message),
+  // initialize the thread
+  const threadId = useThreadListItem(i => i.id);
+  console.log("TODO threadId", threadId);
+  useEffect(() => {
+    console.log(runtime.thread.unstable_on);
+    return runtime.thread.unstable_on("initialize", () => {
+      console.log("initialize", threadId);
+      runtimeCallbacks.initialize(threadId);
+    });
+  }, [threadId]);
+  return runtime;
+}
+
+
+// const RuntimeProvider = () => {
+//   const runtime = useRemoteThreadListRuntime({
+//     runtimeHook: useMyRuntime,
+//     adapter: {
+//       async list(): Promise<RemoteThreadListResponse> {
+//         console.log("TODO list");
+//         return { threads: [] };
+//       },
+//       async rename(remoteId: string, newTitle: string): Promise<void> {
+//         console.log("TODO rename", remoteId, newTitle);
+//         // TODO: Implement rename
+//       },
+//       async archive(remoteId: string): Promise<void> {
+//         console.log("TODO archive", remoteId);
+//         // TODO: Implement archive
+//       },
+//       async unarchive(remoteId: string): Promise<void> {
+//         console.log("TODO unarchive", remoteId);
+//         // TODO: Implement unarchive
+//       },
+//       async delete(remoteId: string): Promise<void> {
+//         console.log("TODO delete", remoteId);
+//         // TODO: Implement delete
+//       },
+//       async initialize(threadId: string): Promise<RemoteThreadInitializeResponse> {
+//         console.log("TODO initialize", threadId);
+//         return { remoteId: threadId, externalId: threadId };
+//       },
+//       async generateTitle(remoteId: string, unstable_messages: readonly ThreadMessage[]): Promise<ReadableStream> {
+//         console.log("TODO generateTitle", remoteId, unstable_messages);
+//         return new ReadableStream();
+//       },
+//     }
+//   });
+// };
+
+
+function ChatComponent() {
+  // const runtime = useChatRuntime({
+  //   api: "/api/chat",
+  // });
+  const runtime = useRemoteThreadListRuntime({
+    runtimeHook: useMyRuntime,
+    adapter: {
+      async list(): Promise<RemoteThreadListResponse> {
+        console.log("TODO list");
+        return { threads: []};
+      },
+      async rename(remoteId: string, newTitle: string): Promise<void> {
+        console.log("TODO rename", remoteId, newTitle);
+        // TODO: Implement rename
+      },
+      async archive(remoteId: string): Promise<void> {
+        console.log("TODO archive", remoteId);
+        // TODO: Implement archive
+      },
+      async unarchive(remoteId: string): Promise<void> {
+        console.log("TODO unarchive", remoteId);
+        // TODO: Implement unarchive
+      },
+      async delete(remoteId: string): Promise<void> {
+        console.log("TODO delete", remoteId);
+        // TODO: Implement delete
+      },
+      async initialize(threadId: string): Promise<RemoteThreadInitializeResponse> {
+        console.log("TODO initialize", threadId);
+        return { remoteId: threadId, externalId: threadId };
+      },
+      async generateTitle(remoteId: string, unstable_messages: readonly ThreadMessage[]): Promise<ReadableStream> {
+        console.log("TODO generateTitle", remoteId, unstable_messages);
+        return new ReadableStream();
+      },
+    }
+  });
+  const renderCount = ++useRef(0).current;
 
   return (
     <SignedIn>
+      <h1>Render Count: {renderCount}</h1>
       {/* <div className="grid h-dvh grid-cols-[200px_1fr] gap-x-2 px-4 py-72"> */}
       {/* <ThreadList /> */}
       <AssistantRuntimeProvider runtime={runtime}>
         <div className="h-dvh flex flex-col p-12">
           <div className="flex gap-2 mb-4">
-            <NextEmailToolUI />
-            <ArchiveEmailToolUI />
-            <FilterSenderToolUI />
-            <AcceptInviteToolUI />
-            <UnsubscribeToolUI />
-            <CreateDraftReplyToolUI />
-            <UpdateDraftReplyToolUI />
-            <SendDraftToolUI />
-            <DeleteDraftToolUI />
+            <ThreadList />
+            <ToolUIs />
           </div>
           <div className="flex-1 overflow-auto">
             <Thread />
