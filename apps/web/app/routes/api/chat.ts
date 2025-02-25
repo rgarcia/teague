@@ -8,10 +8,18 @@ import { createTool } from "@mastra/core/tools";
 import { Memory } from "@mastra/memory";
 import { json } from "@tanstack/start";
 import { createAPIFileRoute } from "@tanstack/start/api";
-import { convertToCoreMessages, CoreSystemMessage, Message } from "ai";
+import {
+  convertToCoreMessages,
+  CoreSystemMessage,
+  Message,
+  StepResult,
+} from "ai";
 import type { ChatPromptClient } from "langfuse";
 import { voyage } from "voyage-ai-provider";
-import { getMostRecentUserMessage } from "~/lib/utils";
+import {
+  getMostRecentUserMessage,
+  sanitizeResponseMessages,
+} from "~/lib/utils";
 import { getChat } from "~/utils/chats";
 import { clerk } from "~/utils/clerk";
 import { langfuse, langfuseExporter } from "~/utils/langfuse";
@@ -166,6 +174,29 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
         toolsets: { "this-name-doesnt-matter": tools },
         resourceId: clerkUserId,
         // threadId,
+        onFinish: async (result) => {
+          try {
+            const stepResult = JSON.parse(result) as StepResult<any>;
+            const { response, reasoning } = stepResult;
+            const sanitizedResponseMessages = sanitizeResponseMessages({
+              messages: response.messages,
+              reasoning,
+            });
+            await saveMessages({
+              messages: sanitizedResponseMessages.map((message) => {
+                return {
+                  id: message.id,
+                  chatId: id,
+                  role: message.role,
+                  content: message.content,
+                  createdAt: new Date(),
+                };
+              }),
+            });
+          } catch (error) {
+            console.error("Error in onFinish:", error);
+          }
+        },
       });
 
       return res.toDataStreamResponse({
