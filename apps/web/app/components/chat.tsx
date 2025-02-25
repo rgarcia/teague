@@ -1,8 +1,6 @@
-"use client";
-
 import type { Attachment, Message } from "ai";
 import { useChat } from "ai/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 // import useSWR, { useSWRConfig } from "swr";
 
 import { ChatHeader } from "@/components/chat-header";
@@ -15,7 +13,7 @@ import { Messages } from "./messages";
 // import { VisibilityType } from "./visibility-selector";
 // import { useArtifactSelector } from "@/hooks/use-artifact";
 import { toast } from "sonner";
-import { generateUUID } from "~/lib/utils";
+import { createId } from "@paralleldrive/cuid2";
 
 export function Chat({
   id,
@@ -31,7 +29,6 @@ export function Chat({
   isReadonly: boolean;
 }) {
   // const { mutate } = useSWRConfig();
-
   const {
     messages,
     setMessages,
@@ -48,7 +45,7 @@ export function Chat({
     initialMessages,
     experimental_throttle: 100,
     sendExtraMessageFields: true,
-    generateId: generateUUID,
+    generateId: createId,
     onFinish: () => {
       console.log("TODO: onFinish, save to history");
       // mutate("/api/history");
@@ -65,6 +62,14 @@ export function Chat({
 
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
   // const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
+
+  // if messages is empty (i.e. no initial message), we need to call append in an effect with the inital message pulled from local storage
+  useEffect(() => {
+    const initialMessage = localStorage.getItem(`chat_${id}_initialMessage`);
+    if (initialMessages.length === 0 && initialMessage) {
+      append({ role: "user", content: initialMessage });
+    }
+  }, []);
 
   return (
     <>

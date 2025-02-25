@@ -11,7 +11,7 @@ import {
   SidebarMenu,
   useSidebar,
 } from "@/components/ui/sidebar";
-// import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { useClerk } from "@clerk/tanstack-start";
 type User = NonNullable<ReturnType<typeof useClerk>["user"]>;
@@ -25,8 +25,8 @@ export function AppSidebar({ user }: { user: User | undefined }) {
       <SidebarHeader>
         <SidebarMenu>
           <div className="flex flex-row justify-between items-center">
-            <a
-              href="/"
+            <Link
+              to="/"
               onClick={() => {
                 setOpenMobile(false);
               }}
@@ -35,7 +35,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               <span className="text-lg font-semibold px-2 hover:bg-muted rounded-md cursor-pointer">
                 Cannon
               </span>
-            </a>
+            </Link>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button

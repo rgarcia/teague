@@ -8,12 +8,16 @@ import { createTool } from "@mastra/core/tools";
 import { Memory } from "@mastra/memory";
 import { json } from "@tanstack/start";
 import { createAPIFileRoute } from "@tanstack/start/api";
-import { CoreSystemMessage } from "ai";
+import { convertToCoreMessages, CoreSystemMessage, Message } from "ai";
 import type { ChatPromptClient } from "langfuse";
 import { voyage } from "voyage-ai-provider";
+import { getMostRecentUserMessage } from "~/lib/utils";
+import { getChat } from "~/utils/chats";
 import { clerk } from "~/utils/clerk";
 import { langfuse, langfuseExporter } from "~/utils/langfuse";
+import { saveMessages } from "~/utils/messages";
 import registry from "~/utils/tools/all-tools";
+import { getUser } from "~/utils/users";
 
 let systemPrompt: ChatPromptClient;
 
@@ -87,15 +91,23 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
         content: systemPromptText,
       };
 
-      const { userId } = await getAuth(request);
-      if (!userId) {
+      const { userId: clerkUserId } = await getAuth(request);
+      if (!clerkUserId) {
         return json({ error: "Unauthorized" }, { status: 401 });
       }
-      const [user, clerkRes] = await Promise.all([
-        clerk.users.getUser(userId),
-        clerk.users.getUserOauthAccessToken(userId, "google"),
+      const [clerkUser, clerkRes] = await Promise.all([
+        clerk.users.getUser(clerkUserId),
+        clerk.users.getUserOauthAccessToken(clerkUserId, "google"),
       ]);
       const googleToken = clerkRes.data[0].token;
+
+      const user = await getUser({ clerkUserId });
+      if (!user) {
+        return json(
+          { error: `User not found for Clerk ID ${clerkUserId}` },
+          { status: 404 }
+        );
+      }
 
       const tools = Object.fromEntries(
         registry.getAllTools().map((t) => {
@@ -109,7 +121,7 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
                 try {
                   const result = await t.execute(params, {
                     googleToken,
-                    user,
+                    user: clerkUser,
                   });
                   return result;
                 } catch (error) {
@@ -122,15 +134,37 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
         })
       );
 
-      const req = await request.json();
-      const messages = req.messages;
+      const {
+        id,
+        messages,
+        selectedChatModel,
+      }: { id: string; messages: Array<Message>; selectedChatModel: string } =
+        await request.json();
+
+      const coreMessages = convertToCoreMessages(messages);
+      const userMessage = getMostRecentUserMessage(messages);
+
+      if (!userMessage) {
+        return new Response("No user message found", { status: 400 });
+      }
+
+      const chat = await getChat({ chatId: id });
+      if (!chat) {
+        throw new Error(`Chat not found for id ${id}`);
+      }
+      await saveMessages({
+        messages: [{ ...userMessage, createdAt: new Date(), chatId: id }],
+      });
+
+      // const req = await request.json();
+      // const messages = req.messages;
       // const threadId = req.unstable_assistantMessageId;
 
       //  Order of ops: instructions, ...context, ...memories, ...messages
       const res = await mastra.getAgent("cannon").stream([], {
-        context: [systemPromptMessage, ...messages],
+        context: [systemPromptMessage, ...coreMessages],
         toolsets: { "this-name-doesnt-matter": tools },
-        resourceId: userId,
+        resourceId: clerkUserId,
         // threadId,
       });
 

@@ -29,16 +29,21 @@ const clerk = createClerkClient({
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import type { QueryClient } from "@tanstack/react-query";
 import { Toaster } from "sonner";
+import { fetchUserServer } from "~/utils/users";
 
 const fetchClerkAuth = createServerFn({ method: "GET" }).handler(async () => {
-  const { userId } = await getAuth(getWebRequest()!);
-  if (!userId) {
+  const { userId: clerkUserId } = await getAuth(getWebRequest()!);
+  if (!clerkUserId) {
     return {};
   }
-  const response = await clerk.users.getUserOauthAccessToken(userId, "google");
+  const response = await clerk.users.getUserOauthAccessToken(
+    clerkUserId,
+    "google"
+  );
   const googleToken = response.data[0].token;
+
   return {
-    userId,
+    clerkUserId,
     googleToken,
   };
 });
@@ -80,9 +85,14 @@ export const Route = createRootRouteWithContext<{
     ],
   }),
   beforeLoad: async () => {
-    const { userId, googleToken } = await fetchClerkAuth();
+    const [{ clerkUserId, googleToken }, user] = await Promise.all([
+      fetchClerkAuth(),
+      fetchUserServer(),
+    ]);
+
     return {
-      userId,
+      user,
+      clerkUserId,
       googleToken,
     };
   },
