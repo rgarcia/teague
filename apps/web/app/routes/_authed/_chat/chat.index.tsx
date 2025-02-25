@@ -1,7 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
-import { createChatWithMessage } from "../../../utils/test";
+import { createChatWithMessage } from "~/utils/chats";
 import { ChatHeader } from "~/components/chat-header";
 import { DEFAULT_CHAT_MODEL } from "~/lib/ai/models";
 import { Messages } from "~/components/messages";

@@ -4,6 +4,7 @@ sst-env.d.ts
 apps/web/scripts/*.db
 apps/web/scripts/system-prompt.md
 apps/web/scripts/dumps/
+packages/db/.env.prod
 
 # my todos
 TODO
