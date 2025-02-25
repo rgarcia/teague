@@ -14,8 +14,6 @@ export default defineConfig({
     },
     build: {
       sourcemap: true,
-      outDir: "dist",
-      assetsDir: "assets",
     },
     plugins: [
       tsConfigPaths({
@@ -25,5 +23,11 @@ export default defineConfig({
   },
   server: {
     preset: "node-server",
+    // https://www.answeroverflow.com/m/1290134493889429586
+    esbuild: {
+      options: {
+        target: "es2022",
+      },
+    },
   },
 });
