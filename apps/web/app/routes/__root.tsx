@@ -5,6 +5,7 @@ import {
   Link,
   Outlet,
   createRootRoute,
+  createRootRouteWithContext,
 } from "@tanstack/react-router";
 import {
   ClerkProvider,
@@ -25,21 +26,31 @@ import { createClerkClient } from "@clerk/backend";
 const clerk = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY,
 });
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import type { QueryClient } from "@tanstack/react-query";
+import { Toaster } from "sonner";
+import { fetchUserServer } from "~/utils/users";
 
 const fetchClerkAuth = createServerFn({ method: "GET" }).handler(async () => {
-  const { userId } = await getAuth(getWebRequest()!);
-  if (!userId) {
+  const { userId: clerkUserId } = await getAuth(getWebRequest()!);
+  if (!clerkUserId) {
     return {};
   }
-  const response = await clerk.users.getUserOauthAccessToken(userId, "google");
+  const response = await clerk.users.getUserOauthAccessToken(
+    clerkUserId,
+    "google"
+  );
   const googleToken = response.data[0].token;
+
   return {
-    userId,
+    clerkUserId,
     googleToken,
   };
 });
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<{
+  queryClient: QueryClient;
+}>()({
   head: () => ({
     meta: [
       {
@@ -74,9 +85,14 @@ export const Route = createRootRoute({
     ],
   }),
   beforeLoad: async () => {
-    const { userId, googleToken } = await fetchClerkAuth();
+    const [{ clerkUserId, googleToken }, user] = await Promise.all([
+      fetchClerkAuth(),
+      fetchUserServer(),
+    ]);
+
     return {
-      userId,
+      user,
+      clerkUserId,
       googleToken,
     };
   },
@@ -108,7 +124,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <div className="p-2 flex gap-2 text-lg">
+        <Toaster position="top-center" />
+        {/* <div className="p-2 flex gap-2 text-lg">
           <Link
             to="/"
             activeProps={{
@@ -135,10 +152,13 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             </SignedOut>
           </div>
         </div>
-        <hr />
+        <hr /> */}
         {children}
         {process.env.NODE_ENV === "development" && (
-          <TanStackRouterDevtools position="bottom-right" />
+          <>
+            <ReactQueryDevtools buttonPosition="bottom-left" />
+            <TanStackRouterDevtools position="bottom-right" />
+          </>
         )}
         <Scripts />
       </body>

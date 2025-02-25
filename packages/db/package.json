@@ -1,0 +1,29 @@
+{
+  "name": "db",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./src/index.ts",
+  "scripts": {
+    "db:push": "dotenv -e .env drizzle-kit push",
+    "db:studio": "dotenv -e .env drizzle-kit studio",
+    "db:generate": "dotenv -e .env drizzle-kit generate",
+    "db:migrate": "dotenv -e .env drizzle-kit migrate",
+    "db:seed": "tsx src/seed.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@planetscale/database": "^1.19.0",
+    "dotenv": "^16.4.7",
+    "dotenv-cli": "^8.0.0",
+    "drizzle-kit": "^0.30.4",
+    "drizzle-orm": "^0.39.3",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "@paralleldrive/cuid2": "^2.2.2",
+    "drizzle-zod": "^0.7.0"
+  }
+}

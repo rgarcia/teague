@@ -14,10 +14,12 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as AuthedImport } from './routes/_authed'
 import { Route as IndexImport } from './routes/index'
 import { Route as AuthedPostsImport } from './routes/_authed/posts'
-import { Route as AuthedChatImport } from './routes/_authed/chat'
+import { Route as AuthedChatImport } from './routes/_authed/_chat'
 import { Route as AuthedPostsIndexImport } from './routes/_authed/posts.index'
 import { Route as AuthedProfileSplatImport } from './routes/_authed/profile.$'
 import { Route as AuthedPostsPostIdImport } from './routes/_authed/posts.$postId'
+import { Route as AuthedChatChatIndexImport } from './routes/_authed/_chat/chat.index'
+import { Route as AuthedChatChatIdImport } from './routes/_authed/_chat/chat.$id'
 
 // Create/Update Routes
 
@@ -39,8 +41,7 @@ const AuthedPostsRoute = AuthedPostsImport.update({
 } as any)
 
 const AuthedChatRoute = AuthedChatImport.update({
-  id: '/chat',
-  path: '/chat',
+  id: '/_chat',
   getParentRoute: () => AuthedRoute,
 } as any)
 
@@ -62,6 +63,18 @@ const AuthedPostsPostIdRoute = AuthedPostsPostIdImport.update({
   getParentRoute: () => AuthedPostsRoute,
 } as any)
 
+const AuthedChatChatIndexRoute = AuthedChatChatIndexImport.update({
+  id: '/chat/',
+  path: '/chat/',
+  getParentRoute: () => AuthedChatRoute,
+} as any)
+
+const AuthedChatChatIdRoute = AuthedChatChatIdImport.update({
+  id: '/chat/$id',
+  path: '/chat/$id',
+  getParentRoute: () => AuthedChatRoute,
+} as any)
+
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
@@ -80,10 +93,10 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedImport
       parentRoute: typeof rootRoute
     }
-    '/_authed/chat': {
-      id: '/_authed/chat'
-      path: '/chat'
-      fullPath: '/chat'
+    '/_authed/_chat': {
+      id: '/_authed/_chat'
+      path: ''
+      fullPath: ''
       preLoaderRoute: typeof AuthedChatImport
       parentRoute: typeof AuthedImport
     }
@@ -115,10 +128,38 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedPostsIndexImport
       parentRoute: typeof AuthedPostsImport
     }
+    '/_authed/_chat/chat/$id': {
+      id: '/_authed/_chat/chat/$id'
+      path: '/chat/$id'
+      fullPath: '/chat/$id'
+      preLoaderRoute: typeof AuthedChatChatIdImport
+      parentRoute: typeof AuthedChatImport
+    }
+    '/_authed/_chat/chat/': {
+      id: '/_authed/_chat/chat/'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof AuthedChatChatIndexImport
+      parentRoute: typeof AuthedChatImport
+    }
   }
 }
 
 // Create and export the route tree
+
+interface AuthedChatRouteChildren {
+  AuthedChatChatIdRoute: typeof AuthedChatChatIdRoute
+  AuthedChatChatIndexRoute: typeof AuthedChatChatIndexRoute
+}
+
+const AuthedChatRouteChildren: AuthedChatRouteChildren = {
+  AuthedChatChatIdRoute: AuthedChatChatIdRoute,
+  AuthedChatChatIndexRoute: AuthedChatChatIndexRoute,
+}
+
+const AuthedChatRouteWithChildren = AuthedChatRoute._addFileChildren(
+  AuthedChatRouteChildren,
+)
 
 interface AuthedPostsRouteChildren {
   AuthedPostsPostIdRoute: typeof AuthedPostsPostIdRoute
@@ -135,13 +176,13 @@ const AuthedPostsRouteWithChildren = AuthedPostsRoute._addFileChildren(
 )
 
 interface AuthedRouteChildren {
-  AuthedChatRoute: typeof AuthedChatRoute
+  AuthedChatRoute: typeof AuthedChatRouteWithChildren
   AuthedPostsRoute: typeof AuthedPostsRouteWithChildren
   AuthedProfileSplatRoute: typeof AuthedProfileSplatRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
-  AuthedChatRoute: AuthedChatRoute,
+  AuthedChatRoute: AuthedChatRouteWithChildren,
   AuthedPostsRoute: AuthedPostsRouteWithChildren,
   AuthedProfileSplatRoute: AuthedProfileSplatRoute,
 }
@@ -151,32 +192,36 @@ const AuthedRouteWithChildren =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '': typeof AuthedRouteWithChildren
-  '/chat': typeof AuthedChatRoute
+  '': typeof AuthedChatRouteWithChildren
   '/posts': typeof AuthedPostsRouteWithChildren
   '/posts/$postId': typeof AuthedPostsPostIdRoute
   '/profile/$': typeof AuthedProfileSplatRoute
   '/posts/': typeof AuthedPostsIndexRoute
+  '/chat/$id': typeof AuthedChatChatIdRoute
+  '/chat': typeof AuthedChatChatIndexRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '': typeof AuthedRouteWithChildren
-  '/chat': typeof AuthedChatRoute
+  '': typeof AuthedChatRouteWithChildren
   '/posts/$postId': typeof AuthedPostsPostIdRoute
   '/profile/$': typeof AuthedProfileSplatRoute
   '/posts': typeof AuthedPostsIndexRoute
+  '/chat/$id': typeof AuthedChatChatIdRoute
+  '/chat': typeof AuthedChatChatIndexRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
-  '/_authed/chat': typeof AuthedChatRoute
+  '/_authed/_chat': typeof AuthedChatRouteWithChildren
   '/_authed/posts': typeof AuthedPostsRouteWithChildren
   '/_authed/posts/$postId': typeof AuthedPostsPostIdRoute
   '/_authed/profile/$': typeof AuthedProfileSplatRoute
   '/_authed/posts/': typeof AuthedPostsIndexRoute
+  '/_authed/_chat/chat/$id': typeof AuthedChatChatIdRoute
+  '/_authed/_chat/chat/': typeof AuthedChatChatIndexRoute
 }
 
 export interface FileRouteTypes {
@@ -184,22 +229,32 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | ''
-    | '/chat'
     | '/posts'
     | '/posts/$postId'
     | '/profile/$'
     | '/posts/'
+    | '/chat/$id'
+    | '/chat'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '' | '/chat' | '/posts/$postId' | '/profile/$' | '/posts'
+  to:
+    | '/'
+    | ''
+    | '/posts/$postId'
+    | '/profile/$'
+    | '/posts'
+    | '/chat/$id'
+    | '/chat'
   id:
     | '__root__'
     | '/'
     | '/_authed'
-    | '/_authed/chat'
+    | '/_authed/_chat'
     | '/_authed/posts'
     | '/_authed/posts/$postId'
     | '/_authed/profile/$'
     | '/_authed/posts/'
+    | '/_authed/_chat/chat/$id'
+    | '/_authed/_chat/chat/'
   fileRoutesById: FileRoutesById
 }
 
@@ -233,14 +288,18 @@ export const routeTree = rootRoute
     "/_authed": {
       "filePath": "_authed.tsx",
       "children": [
-        "/_authed/chat",
+        "/_authed/_chat",
         "/_authed/posts",
         "/_authed/profile/$"
       ]
     },
-    "/_authed/chat": {
-      "filePath": "_authed/chat.tsx",
-      "parent": "/_authed"
+    "/_authed/_chat": {
+      "filePath": "_authed/_chat.tsx",
+      "parent": "/_authed",
+      "children": [
+        "/_authed/_chat/chat/$id",
+        "/_authed/_chat/chat/"
+      ]
     },
     "/_authed/posts": {
       "filePath": "_authed/posts.tsx",
@@ -261,6 +320,14 @@ export const routeTree = rootRoute
     "/_authed/posts/": {
       "filePath": "_authed/posts.index.tsx",
       "parent": "/_authed/posts"
+    },
+    "/_authed/_chat/chat/$id": {
+      "filePath": "_authed/_chat/chat.$id.tsx",
+      "parent": "/_authed/_chat"
+    },
+    "/_authed/_chat/chat/": {
+      "filePath": "_authed/_chat/chat.index.tsx",
+      "parent": "/_authed/_chat"
     }
   }
 }

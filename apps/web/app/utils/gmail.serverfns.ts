@@ -1,3 +1,4 @@
+import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/start";
 import {
   archiveEmail,
@@ -24,6 +25,20 @@ export const fetchEmailsFn = createServerFn({ method: "GET" })
       });
     }
   );
+
+export const fetchEmailsQueryOptions = ({
+  googleToken,
+  query,
+  maxResults,
+  nextPageToken,
+}: FetchEmailsInput) =>
+  queryOptions({
+    queryKey: ["fetchEmails", googleToken, query, maxResults, nextPageToken],
+    queryFn: () =>
+      fetchEmailsFn({
+        data: { googleToken, query, maxResults, nextPageToken },
+      }),
+  });
 
 export const archiveEmailFn = createServerFn({ method: "POST" })
   .validator((input: unknown): ArchiveEmailInput => {

@@ -3,46 +3,58 @@ import { openai } from "@ai-sdk/openai";
 import { getAuth } from "@clerk/tanstack-start/server";
 import { Mastra } from "@mastra/core";
 import { Agent } from "@mastra/core/agent";
-import { DefaultStorage, DefaultVectorDB } from "@mastra/core/storage";
+// import { DefaultStorage, DefaultVectorDB } from "@mastra/core/storage";
 import { createTool } from "@mastra/core/tools";
-import { Memory } from "@mastra/memory";
+// import { Memory } from "@mastra/memory";
 import { json } from "@tanstack/start";
 import { createAPIFileRoute } from "@tanstack/start/api";
-import { CoreSystemMessage } from "ai";
+import {
+  convertToCoreMessages,
+  CoreSystemMessage,
+  Message,
+  StepResult,
+} from "ai";
 import type { ChatPromptClient } from "langfuse";
-import { voyage } from "voyage-ai-provider";
+// import { voyage } from "voyage-ai-provider";
+import {
+  getMostRecentUserMessage,
+  sanitizeResponseMessages,
+} from "~/lib/utils";
+import { getChat } from "~/utils/chats";
 import { clerk } from "~/utils/clerk";
 import { langfuse, langfuseExporter } from "~/utils/langfuse";
+import { saveMessages } from "~/utils/messages";
 import registry from "~/utils/tools/all-tools";
+import { getUser } from "~/utils/users";
 
 let systemPrompt: ChatPromptClient;
 
 // for some reason this is causing multiple unrelated tool calls to be made (e.g. getnextemail while creating a draft to the current email)
-const memory = new Memory({
-  embedder: voyage("voyage-3-large"),
-  storage: new DefaultStorage({
-    config: {
-      url: "file:memory.db",
-    },
-  }),
-  vector: new DefaultVectorDB({
-    connectionUrl: "file:vector.db",
-  }),
-  // https://mastra.ai/blog/using-ai-sdk-with-mastra#1-agent-memory
-  options: {
-    lastMessages: 6,
-    // semanticRecall: {
-    //   messageRange: 1,
-    //   topK: 3,
-    // },
-    workingMemory: {
-      enabled: true,
-      template: `<preferred-name></preferred-name>
-        <preferred-draft-tone></preferred-draft-tone>
-        <preferred-draft-guidance></preferred-draft-guidance>`,
-    },
-  },
-});
+// const memory = new Memory({
+//   embedder: voyage("voyage-3-large"),
+//   storage: new DefaultStorage({
+//     config: {
+//       url: "file:memory.db",
+//     },
+//   }),
+//   vector: new DefaultVectorDB({
+//     connectionUrl: "file:vector.db",
+//   }),
+//   // https://mastra.ai/blog/using-ai-sdk-with-mastra#1-agent-memory
+//   options: {
+//     lastMessages: 6,
+//     // semanticRecall: {
+//     //   messageRange: 1,
+//     //   topK: 3,
+//     // },
+//     workingMemory: {
+//       enabled: true,
+//       template: `<preferred-name></preferred-name>
+//         <preferred-draft-tone></preferred-draft-tone>
+//         <preferred-draft-guidance></preferred-draft-guidance>`,
+//     },
+//   },
+// });
 
 const mastra = new Mastra({
   agents: {
@@ -87,15 +99,23 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
         content: systemPromptText,
       };
 
-      const { userId } = await getAuth(request);
-      if (!userId) {
+      const { userId: clerkUserId } = await getAuth(request);
+      if (!clerkUserId) {
         return json({ error: "Unauthorized" }, { status: 401 });
       }
-      const [user, clerkRes] = await Promise.all([
-        clerk.users.getUser(userId),
-        clerk.users.getUserOauthAccessToken(userId, "google"),
+      const [clerkUser, clerkRes] = await Promise.all([
+        clerk.users.getUser(clerkUserId),
+        clerk.users.getUserOauthAccessToken(clerkUserId, "google"),
       ]);
       const googleToken = clerkRes.data[0].token;
+
+      const user = await getUser({ clerkUserId });
+      if (!user) {
+        return json(
+          { error: `User not found for Clerk ID ${clerkUserId}` },
+          { status: 404 }
+        );
+      }
 
       const tools = Object.fromEntries(
         registry.getAllTools().map((t) => {
@@ -109,7 +129,7 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
                 try {
                   const result = await t.execute(params, {
                     googleToken,
-                    user,
+                    user: clerkUser,
                   });
                   return result;
                 } catch (error) {
@@ -122,16 +142,61 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
         })
       );
 
-      const req = await request.json();
-      const messages = req.messages;
+      const {
+        id,
+        messages,
+        selectedChatModel,
+      }: { id: string; messages: Array<Message>; selectedChatModel: string } =
+        await request.json();
+
+      const coreMessages = convertToCoreMessages(messages);
+      const userMessage = getMostRecentUserMessage(messages);
+
+      if (!userMessage) {
+        return new Response("No user message found", { status: 400 });
+      }
+
+      const chat = await getChat({ chatId: id });
+      if (!chat) {
+        throw new Error(`Chat not found for id ${id}`);
+      }
+      await saveMessages({
+        messages: [{ ...userMessage, createdAt: new Date(), chatId: id }],
+      });
+
+      // const req = await request.json();
+      // const messages = req.messages;
       // const threadId = req.unstable_assistantMessageId;
 
       //  Order of ops: instructions, ...context, ...memories, ...messages
       const res = await mastra.getAgent("cannon").stream([], {
-        context: [systemPromptMessage, ...messages],
+        context: [systemPromptMessage, ...coreMessages],
         toolsets: { "this-name-doesnt-matter": tools },
-        resourceId: userId,
+        resourceId: clerkUserId,
         // threadId,
+        onFinish: async (result) => {
+          try {
+            const stepResult = JSON.parse(result) as StepResult<any>;
+            const { response, reasoning } = stepResult;
+            const sanitizedResponseMessages = sanitizeResponseMessages({
+              messages: response.messages,
+              reasoning,
+            });
+            await saveMessages({
+              messages: sanitizedResponseMessages.map((message) => {
+                return {
+                  id: message.id,
+                  chatId: id,
+                  role: message.role,
+                  content: message.content,
+                  createdAt: new Date(),
+                };
+              }),
+            });
+          } catch (error) {
+            console.error("Error in onFinish:", error);
+          }
+        },
       });
 
       return res.toDataStreamResponse({
