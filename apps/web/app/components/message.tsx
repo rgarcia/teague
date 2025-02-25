@@ -21,6 +21,17 @@ import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { MessageEditor } from "./message-editor";
+import {
+  NextEmailUI,
+  ArchiveEmailUI,
+  FilterSenderUI,
+  AcceptInviteUI,
+  UnsubscribeUI,
+  CreateDraftReplyUI,
+  UpdateDraftReplyUI,
+  SendDraftUI,
+  DeleteDraftUI,
+} from "./ToolUIs";
 // import { DocumentPreview } from "./document-preview";
 // import { MessageReasoning } from "./message-reasoning";
 
@@ -91,6 +102,78 @@ const PurePreviewMessage = ({
               />
             )} */}
 
+            {message.toolInvocations && message.toolInvocations.length > 0 && (
+              <div className="flex flex-col gap-4">
+                {message.toolInvocations.map((toolInvocation) => {
+                  const { toolName, toolCallId, state, args } = toolInvocation;
+
+                  if (state === "result") {
+                    const { result } = toolInvocation;
+
+                    return (
+                      <div key={toolCallId}>
+                        {toolName === "GetNextEmail" ? (
+                          <NextEmailUI args={args} result={result} />
+                        ) : toolName === "ArchiveEmail" ? (
+                          <ArchiveEmailUI args={args} result={result} />
+                        ) : toolName === "FilterSender" ? (
+                          <FilterSenderUI args={args} result={result} />
+                        ) : toolName === "AcceptInvite" ? (
+                          <AcceptInviteUI args={args} result={result} />
+                        ) : toolName === "Unsubscribe" ? (
+                          <UnsubscribeUI args={args} result={result} />
+                        ) : toolName === "CreateDraftReply" ? (
+                          <CreateDraftReplyUI args={args} result={result} />
+                        ) : toolName === "UpdateDraftReply" ? (
+                          <UpdateDraftReplyUI args={args} result={result} />
+                        ) : toolName === "SendDraft" ? (
+                          <SendDraftUI args={args} result={result} />
+                        ) : toolName === "DeleteDraft" ? (
+                          <DeleteDraftUI args={args} result={result} />
+                        ) : (
+                          <pre className="text-sm">
+                            {JSON.stringify({ toolName, result }, null, 2)}
+                          </pre>
+                        )}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div
+                      key={toolCallId}
+                      className={cx({
+                        skeleton: ["getWeather"].includes(toolName),
+                      })}
+                    >
+                      {toolName === "GetNextEmail" ? (
+                        <NextEmailUI args={args} />
+                      ) : toolName === "ArchiveEmail" ? (
+                        <ArchiveEmailUI args={args} />
+                      ) : toolName === "FilterSender" ? (
+                        <FilterSenderUI args={args} />
+                      ) : toolName === "AcceptInvite" ? (
+                        <AcceptInviteUI args={args} />
+                      ) : toolName === "Unsubscribe" ? (
+                        <UnsubscribeUI args={args} />
+                      ) : toolName === "CreateDraftReply" ? (
+                        <CreateDraftReplyUI args={args} />
+                      ) : toolName === "UpdateDraftReply" ? (
+                        <UpdateDraftReplyUI args={args} />
+                      ) : toolName === "SendDraft" ? (
+                        <SendDraftUI args={args} />
+                      ) : toolName === "DeleteDraft" ? (
+                        <DeleteDraftUI args={args} />
+                      ) : (
+                        <pre className="text-sm">
+                          {JSON.stringify({ toolName, args }, null, 2)}
+                        </pre>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             {(message.content || message.reasoning) && mode === "view" && (
               <div className="flex flex-row gap-2 items-start">
                 {message.role === "user" && !isReadonly && (
@@ -132,71 +215,6 @@ const PurePreviewMessage = ({
                   setMessages={setMessages}
                   reload={reload}
                 />
-              </div>
-            )}
-
-            {message.toolInvocations && message.toolInvocations.length > 0 && (
-              <div className="flex flex-col gap-4">
-                {message.toolInvocations.map((toolInvocation) => {
-                  const { toolName, toolCallId, state, args } = toolInvocation;
-
-                  if (state === "result") {
-                    const { result } = toolInvocation;
-
-                    return (
-                      <div key={toolCallId}>
-                        {/* {toolName === "getWeather" ? (
-                          <Weather weatherAtLocation={result} />
-                        ) : toolName === "createDocument" ? (
-                          <DocumentPreview
-                            isReadonly={isReadonly}
-                            result={result}
-                          />
-                        ) : toolName === "updateDocument" ? (
-                          <DocumentToolResult
-                            type="update"
-                            result={result}
-                            isReadonly={isReadonly}
-                          />
-                        ) : toolName === "requestSuggestions" ? (
-                          <DocumentToolResult
-                            type="request-suggestions"
-                            result={result}
-                            isReadonly={isReadonly}
-                          />
-                        ) : ( */}
-                        <pre>{JSON.stringify(result, null, 2)}</pre>
-                        {/* )} */}
-                      </div>
-                    );
-                  }
-                  return (
-                    <div
-                      key={toolCallId}
-                      className={cx({
-                        skeleton: ["getWeather"].includes(toolName),
-                      })}
-                    >
-                      {/* {toolName === "getWeather" ? (
-                        <Weather />
-                      ) : toolName === "createDocument" ? (
-                        <DocumentPreview isReadonly={isReadonly} args={args} />
-                      ) : toolName === "updateDocument" ? (
-                        <DocumentToolCall
-                          type="update"
-                          args={args}
-                          isReadonly={isReadonly}
-                        />
-                      ) : toolName === "requestSuggestions" ? (
-                        <DocumentToolCall
-                          type="request-suggestions"
-                          args={args}
-                          isReadonly={isReadonly}
-                        />
-                      ) : null} */}
-                    </div>
-                  );
-                })}
               </div>
             )}
 

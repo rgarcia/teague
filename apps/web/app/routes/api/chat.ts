@@ -3,9 +3,9 @@ import { openai } from "@ai-sdk/openai";
 import { getAuth } from "@clerk/tanstack-start/server";
 import { Mastra } from "@mastra/core";
 import { Agent } from "@mastra/core/agent";
-import { DefaultStorage, DefaultVectorDB } from "@mastra/core/storage";
+// import { DefaultStorage, DefaultVectorDB } from "@mastra/core/storage";
 import { createTool } from "@mastra/core/tools";
-import { Memory } from "@mastra/memory";
+// import { Memory } from "@mastra/memory";
 import { json } from "@tanstack/start";
 import { createAPIFileRoute } from "@tanstack/start/api";
 import {
@@ -15,7 +15,7 @@ import {
   StepResult,
 } from "ai";
 import type { ChatPromptClient } from "langfuse";
-import { voyage } from "voyage-ai-provider";
+// import { voyage } from "voyage-ai-provider";
 import {
   getMostRecentUserMessage,
   sanitizeResponseMessages,
@@ -30,31 +30,31 @@ import { getUser } from "~/utils/users";
 let systemPrompt: ChatPromptClient;
 
 // for some reason this is causing multiple unrelated tool calls to be made (e.g. getnextemail while creating a draft to the current email)
-const memory = new Memory({
-  embedder: voyage("voyage-3-large"),
-  storage: new DefaultStorage({
-    config: {
-      url: "file:memory.db",
-    },
-  }),
-  vector: new DefaultVectorDB({
-    connectionUrl: "file:vector.db",
-  }),
-  // https://mastra.ai/blog/using-ai-sdk-with-mastra#1-agent-memory
-  options: {
-    lastMessages: 6,
-    // semanticRecall: {
-    //   messageRange: 1,
-    //   topK: 3,
-    // },
-    workingMemory: {
-      enabled: true,
-      template: `<preferred-name></preferred-name>
-        <preferred-draft-tone></preferred-draft-tone>
-        <preferred-draft-guidance></preferred-draft-guidance>`,
-    },
-  },
-});
+// const memory = new Memory({
+//   embedder: voyage("voyage-3-large"),
+//   storage: new DefaultStorage({
+//     config: {
+//       url: "file:memory.db",
+//     },
+//   }),
+//   vector: new DefaultVectorDB({
+//     connectionUrl: "file:vector.db",
+//   }),
+//   // https://mastra.ai/blog/using-ai-sdk-with-mastra#1-agent-memory
+//   options: {
+//     lastMessages: 6,
+//     // semanticRecall: {
+//     //   messageRange: 1,
+//     //   topK: 3,
+//     // },
+//     workingMemory: {
+//       enabled: true,
+//       template: `<preferred-name></preferred-name>
+//         <preferred-draft-tone></preferred-draft-tone>
+//         <preferred-draft-guidance></preferred-draft-guidance>`,
+//     },
+//   },
+// });
 
 const mastra = new Mastra({
   agents: {

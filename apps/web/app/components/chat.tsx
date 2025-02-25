@@ -47,7 +47,7 @@ export function Chat({
     sendExtraMessageFields: true,
     generateId: createId,
     onFinish: () => {
-      console.log("TODO: onFinish, save to history");
+      console.log("TODO: onFinish, note that history is mutated");
       // mutate("/api/history");
     },
     onError: (error) => {
