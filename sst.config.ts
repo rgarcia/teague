@@ -60,6 +60,11 @@ export default $config({
       vapi: {
         apiKey: new sst.Secret("VapiKey"),
       },
+      planetscale: {
+        host: "aws.connect.psdb.cloud",
+        username: new sst.Secret("PlanetScaleUsername"),
+        password: new sst.Secret("PlanetScalePassword"),
+      },
     };
     const vars = [
       {
@@ -105,6 +110,18 @@ export default $config({
       {
         name: "VAPI_API_KEY",
         value: secrets.vapi.apiKey.value,
+      },
+      {
+        name: "DATABASE_HOST",
+        value: secrets.planetscale.host,
+      },
+      {
+        name: "DATABASE_USERNAME",
+        value: secrets.planetscale.username.value,
+      },
+      {
+        name: "DATABASE_PASSWORD",
+        value: secrets.planetscale.password.value,
       },
       {
         name: "PORT",
