@@ -10,6 +10,7 @@ import { json } from "@tanstack/start";
 import { createAPIFileRoute } from "@tanstack/start/api";
 import {
   convertToCoreMessages,
+  CoreMessage,
   CoreSystemMessage,
   Message,
   StepResult,
@@ -142,31 +143,48 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
         })
       );
 
-      const {
+      let {
         id,
         messages,
         selectedChatModel,
       }: { id: string; messages: Array<Message>; selectedChatModel: string } =
         await request.json();
 
-      const coreMessages = convertToCoreMessages(messages);
-      const userMessage = getMostRecentUserMessage(messages);
+      // for some reason user messages are losing content field, so fix that
+      messages = messages.map((m) => {
+        if (m.role === "user" && !m.content) {
+          if (m.parts?.length == 1 && m.parts[0].type === "text") {
+            m.content = m.parts[0].text;
+          } else {
+            throw new Error(
+              `User message is missing content: ${JSON.stringify(m)}`
+            );
+          }
+        }
+        return m;
+      });
 
-      if (!userMessage) {
-        return new Response("No user message found", { status: 400 });
-      }
+      const coreMessages: CoreMessage[] = convertToCoreMessages(messages);
+      const userMessage: Message = getMostRecentUserMessage(messages);
 
       const chat = await getChat({ chatId: id });
       if (!chat) {
         throw new Error(`Chat not found for id ${id}`);
       }
       await saveMessages({
-        messages: [{ ...userMessage, createdAt: new Date(), chatId: id }],
+        messages: [
+          {
+            id: userMessage.id,
+            role: "user",
+            parts: userMessage.parts,
+            // one day convertToCoreMessages will look at parts for user messages. until then we store as content string:
+            content: userMessage.content,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            chatId: id,
+          },
+        ],
       });
-
-      // const req = await request.json();
-      // const messages = req.messages;
-      // const threadId = req.unstable_assistantMessageId;
 
       //  Order of ops: instructions, ...context, ...memories, ...messages
       const res = await mastra.getAgent("cannon").stream([], {
@@ -177,21 +195,13 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
         onFinish: async (result) => {
           try {
             const stepResult = JSON.parse(result) as StepResult<any>;
-            const { response, reasoning } = stepResult;
-            const sanitizedResponseMessages = sanitizeResponseMessages({
+            const { response } = stepResult;
+            const toSave = sanitizeResponseMessages({
+              chatId: id,
               messages: response.messages,
-              reasoning,
             });
             await saveMessages({
-              messages: sanitizedResponseMessages.map((message) => {
-                return {
-                  id: message.id,
-                  chatId: id,
-                  role: message.role,
-                  content: message.content,
-                  createdAt: new Date(),
-                };
-              }),
+              messages: toSave,
             });
           } catch (error) {
             console.error("Error in onFinish:", error);

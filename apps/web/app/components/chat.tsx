@@ -1,5 +1,5 @@
 import type { Attachment, Message } from "ai";
-import { useChat } from "ai/react";
+import { useChat } from "@ai-sdk/react";
 import { useEffect, useState } from "react";
 // import useSWR, { useSWRConfig } from "swr";
 
@@ -67,7 +67,10 @@ export function Chat({
   useEffect(() => {
     const initialMessage = localStorage.getItem(`chat_${id}_initialMessage`);
     if (initialMessages.length === 0 && initialMessage) {
-      append({ role: "user", content: initialMessage });
+      append({
+        role: "user",
+        content: initialMessage,
+      });
     }
   }, []);
 

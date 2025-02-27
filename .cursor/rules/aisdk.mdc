@@ -1,0 +1,356 @@
+---
+description: The Vercel AI SDK, what you need to know
+globs: *.tsx,*.ts
+---
+
+The Vercel AI SDK handles interactions between backend code an LLMs, and also handles interactions between frontend code and our /api/chat endpoint.
+
+The frontend models messages in the following way:
+
+```typescript
+/**
+ * AI SDK UI Messages. They are used in the client and to communicate between the frontend and the API routes.
+ */
+interface Message {
+  /**
+  A unique identifier for the message.
+     */
+  id: string;
+  /**
+  The timestamp of the message.
+     */
+  createdAt?: Date;
+  /**
+  Text content of the message. Use parts when possible.
+     */
+  content: string;
+  /**
+  Reasoning for the message.
+  
+  @deprecated Use `parts` instead.
+     */
+  reasoning?: string;
+  /**
+   * Additional attachments to be sent along with the message.
+   */
+  experimental_attachments?: Attachment[];
+  /**
+  The 'data' role is deprecated.
+     */
+  role: "system" | "user" | "assistant" | "data";
+  /**
+  For data messages.
+  
+  @deprecated Data messages will be removed.
+     */
+  data?: JSONValue;
+  /**
+   * Additional message-specific information added on the server via StreamData
+   */
+  annotations?: JSONValue[] | undefined;
+  /**
+  Tool invocations (that can be tool calls or tool results, depending on whether or not the invocation has finished)
+  that the assistant made as part of this message.
+  
+  @deprecated Use `parts` instead.
+     */
+  toolInvocations?: Array<ToolInvocation>;
+  /**
+   * The parts of the message. Use this for rendering the message in the UI.
+   *
+   * Assistant messages can have text, reasoning and tool invocation parts.
+   * User messages can have text parts.
+   */
+  parts?: Array<
+    TextUIPart | ReasoningUIPart | ToolInvocationUIPart | SourceUIPart
+  >;
+}
+```
+
+Note how the `parts` array can contain multiple elements that the the AI spits out, e.g. text, tool calls, etc. The parts that are the most important are `TextUIPart` and `ToolInvocationUIPart`:
+
+```typescript
+type TextUIPart = {
+  type: "text";
+  /**
+   * The text content.
+   */
+  text: string;
+};
+/**
+ * A tool invocation part of a message.
+ */
+type ToolInvocationUIPart = {
+  type: "tool-invocation";
+  /**
+   * The tool invocation.
+   */
+  toolInvocation: ToolInvocation;
+};
+type ToolInvocation =
+  | ({
+      state: "partial-call";
+      step?: number;
+    } & ToolCall<string, any>)
+  | ({
+      state: "call";
+      step?: number;
+    } & ToolCall<string, any>)
+  | ({
+      state: "result";
+      step?: number;
+    } & ToolResult<string, any, any>);
+/**
+Typed tool result that is returned by `generateText` and `streamText`.
+It contains the tool call ID, the tool name, the tool arguments, and the tool result.
+ */
+interface ToolResult<NAME extends string, ARGS, RESULT> {
+  /**
+  ID of the tool call. This ID is used to match the tool call with the tool result.
+     */
+  toolCallId: string;
+  /**
+  Name of the tool that was called.
+     */
+  toolName: NAME;
+  /**
+  Arguments of the tool call. This is a JSON-serializable object that matches the tool's input schema.
+       */
+  args: ARGS;
+  /**
+  Result of the tool call. This is the result of the tool's execution.
+       */
+  result: RESULT;
+}
+```
+
+The frontend mostly creates a `TextUIPart` and sends it to the `/api/chat` endpoint. It does this using the AI SDK's `useChat` hook, which returns an `append` ad-hoc method for adding stuff plus a `handleSubmit` for use in a chat textbox.
+
+The backend `/api/chat` endpoint receives these UI messages and uses `convertToCoreMessages` from the AI SDK to convert them into the AI SDK `CoreMessage` type, which is what the AI SDK expects when crafting LLM API calls:
+
+```typescript
+type CoreMessage =
+  | CoreSystemMessage
+  | CoreUserMessage
+  | CoreAssistantMessage
+  | CoreToolMessage;
+/**
+ A system message. It can contain system information.
+
+ Note: using the "system" part of the prompt is strongly preferred
+ to increase the resilience against prompt injection attacks,
+ and because not all providers support several system messages.
+ */
+type CoreSystemMessage = {
+  role: "system";
+  content: string;
+  /**
+  Additional provider-specific metadata. They are passed through
+  to the provider from the AI SDK and enable provider-specific
+  functionality that can be fully encapsulated in the provider.
+   */
+  providerOptions?: ProviderOptions;
+  /**
+  @deprecated Use `providerOptions` instead.
+   */
+  experimental_providerMetadata?: ProviderMetadata;
+};
+/**
+A user message. It can contain text or a combination of text and images.
+ */
+type CoreUserMessage = {
+  role: "user";
+  content: UserContent;
+  /**
+  Additional provider-specific metadata. They are passed through
+  to the provider from the AI SDK and enable provider-specific
+  functionality that can be fully encapsulated in the provider.
+   */
+  providerOptions?: ProviderOptions;
+  /**
+  @deprecated Use `providerOptions` instead.
+  */
+  experimental_providerMetadata?: ProviderMetadata;
+};
+/**
+Content of a user message. It can be a string or an array of text and image parts.
+ */
+type UserContent = string | Array<TextPart | ImagePart | FilePart>;
+/**
+An assistant message. It can contain text, tool calls, or a combination of text and tool calls.
+ */
+type CoreAssistantMessage = {
+  role: "assistant";
+  content: AssistantContent;
+  /**
+  Additional provider-specific metadata. They are passed through
+  to the provider from the AI SDK and enable provider-specific
+  functionality that can be fully encapsulated in the provider.
+   */
+  providerOptions?: ProviderOptions;
+  /**
+  @deprecated Use `providerOptions` instead.
+  */
+  experimental_providerMetadata?: ProviderMetadata;
+};
+/**
+Content of an assistant message. It can be a string or an array of text and tool call parts.
+ */
+type AssistantContent =
+  | string
+  | Array<TextPart | ReasoningPart | RedactedReasoningPart | ToolCallPart>;
+/**
+A tool message. It contains the result of one or more tool calls.
+ */
+type CoreToolMessage = {
+  role: "tool";
+  content: ToolContent;
+  /**
+  Additional provider-specific metadata. They are passed through
+  to the provider from the AI SDK and enable provider-specific
+  functionality that can be fully encapsulated in the provider.
+   */
+  providerOptions?: ProviderOptions;
+  /**
+  @deprecated Use `providerOptions` instead.
+  */
+  experimental_providerMetadata?: ProviderMetadata;
+};
+declare const coreToolMessageSchema: z.ZodType<CoreToolMessage>;
+/**
+Content of a tool message. It is an array of tool result parts.
+ */
+type ToolContent = Array<ToolResultPart>;
+```
+
+Note that `CoreUserMessage` and `CoreAssistantMessage` have a `content` field that can either be a simple string OR an array of a richer content type. Both user messages and assistant messages can have `TextPart` elements:
+
+```typescript
+/**
+Text content part of a prompt. It contains a string of text.
+ */
+interface TextPart {
+  type: "text";
+  /**
+  The text content.
+     */
+  text: string;
+  /**
+  Additional provider-specific metadata. They are passed through
+  to the provider from the AI SDK and enable provider-specific
+  functionality that can be fully encapsulated in the provider.
+   */
+  providerOptions?: ProviderOptions;
+  /**
+  @deprecated Use `providerOptions` instead.
+   */
+  experimental_providerMetadata?: ProviderMetadata;
+}
+```
+
+Assistant messages can have `ToolCallPart` elements representing tool call requests from the LLM:
+
+```typescript
+/**
+Tool call content part of a prompt. It contains a tool call (usually generated by the AI model).
+ */
+interface ToolCallPart {
+  type: "tool-call";
+  /**
+  ID of the tool call. This ID is used to match the tool call with the tool result.
+   */
+  toolCallId: string;
+  /**
+  Name of the tool that is being called.
+   */
+  toolName: string;
+  /**
+  Arguments of the tool call. This is a JSON-serializable object that matches the tool's input schema.
+     */
+  args: unknown;
+  /**
+  Additional provider-specific metadata. They are passed through
+  to the provider from the AI SDK and enable provider-specific
+  functionality that can be fully encapsulated in the provider.
+   */
+  providerOptions?: ProviderOptions;
+  /**
+  @deprecated Use `providerOptions` instead.
+   */
+  experimental_providerMetadata?: ProviderMetadata;
+}
+```
+
+And for tool results there is a separate type `CoreToolMessage` which has `ToolResultPart` elements in its content array:
+
+```typescript
+/**
+Tool result content part of a prompt. It contains the result of the tool call with the matching ID.
+ */
+interface ToolResultPart {
+  type: "tool-result";
+  /**
+  ID of the tool call that this result is associated with.
+   */
+  toolCallId: string;
+  /**
+  Name of the tool that generated this result.
+    */
+  toolName: string;
+  /**
+  Result of the tool call. This is a JSON-serializable object.
+     */
+  result: unknown;
+  /**
+  Multi-part content of the tool result. Only for tools that support multipart results.
+     */
+  experimental_content?: ToolResultContent;
+  /**
+  Optional flag if the result is an error or an error message.
+     */
+  isError?: boolean;
+  /**
+  Additional provider-specific metadata. They are passed through
+  to the provider from the AI SDK and enable provider-specific
+  functionality that can be fully encapsulated in the provider.
+   */
+  providerOptions?: ProviderOptions;
+  /**
+  @deprecated Use `providerOptions` instead.
+   */
+  experimental_providerMetadata?: ProviderMetadata;
+}
+```
+
+## Saving to our database
+
+The `messages` table in our database models things like so:
+
+```typescript
+export const messages = mysqlTable("messages", {
+  id: varchar("id", { length: 128 })
+    .$defaultFn(() => createId())
+    .primaryKey()
+    .notNull(),
+  chatId: varchar("chatId", { length: 128 })
+    .notNull()
+    .references(() => chats.id),
+  role: varchar("role", { length: 32 }).notNull(),
+  // deprecating this
+  // content: json("content").notNull(),
+  parts: json("parts"),
+  ...lifecycleDates,
+});
+```
+
+The `/api/chat` endpoint will receive an array of `messages`, the last of which is the user's most recent message. It first calls `convertToCoreMessages` which is an AI SDK utility method that converts `Message` to `CoreMessage`. It has some quirks:
+
+- it doesn't look at `message.parts` for `user` messages, only `message.content`. This means that the frontend should only use the `content` field and not the `parts` array (despite comments in the AI SDK suggeting that the `parts` array should be preferred). `convertToCoreMessages` will produce a user message with a `content` field that is an array of `Array<TextPart | ImagePart | FilePart>`.
+- it /does/ look at `message.parts` if it is an `assistant` message.
+- it requires that any `tool-invocation` message (`ToolInvocationUIPart`) has a result. Presumably this is because you can't feed partial or in-progress tool results to LLM APIs.
+
+This last point is worth keeping in mind because it means we should avoid saving to the database an incomplete tool invocation from the UI, if it happens to get passed to the backend.
+
+Once converted to `CoreMessage[]`, we look at the last message for the `user` message, and immediately save this to the db. Then we send off the request to the LLM, and save the result of that as well to the db (assistant and tool messages).
+
+On reload, these messages are loaded from the DB and converted to `UIMessage[]`, which is what renders on the frontend and starts the UI up again.

@@ -51,6 +51,7 @@ export const messages = mysqlTable("messages", {
     .references(() => chats.id),
   role: varchar("role", { length: 32 }).notNull(),
   content: json("content").notNull(),
+  parts: json("parts"),
   ...lifecycleDates,
 });
 

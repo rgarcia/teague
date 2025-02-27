@@ -8,6 +8,27 @@
       "when": 1740403213002,
       "tag": "0000_tiresome_miss_america",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1740533645431,
+      "tag": "0001_fine_warhawk",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1740533708423,
+      "tag": "0002_sticky_luke_cage",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1740580821754,
+      "tag": "0003_early_firestar",
+      "breakpoints": true
     }
   ]
 }

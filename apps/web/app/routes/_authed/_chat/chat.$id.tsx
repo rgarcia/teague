@@ -4,7 +4,7 @@ import {
   notFound,
 } from "@tanstack/react-router";
 import { fetchChatServer } from "../../../utils/chats";
-import { Message } from "db";
+import { Message as DBMessage } from "db";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { NotFound } from "~/components/NotFound";
 import { fetchMessagesByChatId } from "~/utils/messages";
@@ -36,7 +36,7 @@ export const Route = createFileRoute("/_authed/_chat/chat/$id")({
     }
     const messages = (await fetchMessagesByChatId({
       data: id,
-    })) as Message[];
+    })) as DBMessage[];
     return {
       chat,
       messages,

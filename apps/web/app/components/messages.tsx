@@ -1,4 +1,4 @@
-import { ChatRequestOptions, Message } from "ai";
+import { ChatRequestOptions, Message, UIMessage } from "ai";
 import { PreviewMessage, ThinkingMessage } from "./message";
 import { useScrollToBottom } from "./use-scroll-to-bottom";
 //import { Overview } from "./overview";
@@ -11,7 +11,7 @@ interface MessagesProps {
   chatId: string;
   isLoading: boolean;
   // votes: Array<Vote> | undefined;
-  messages: Array<Message>;
+  messages: Array<UIMessage>;
   setMessages: (
     messages: Message[] | ((messages: Message[]) => Message[])
   ) => void;
@@ -55,6 +55,7 @@ function PureMessages({
           setMessages={setMessages}
           reload={reload}
           isReadonly={isReadonly}
+          previousMessage={messages[index - 1]}
         />
       ))}
 

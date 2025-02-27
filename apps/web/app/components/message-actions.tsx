@@ -32,8 +32,21 @@ export function PureMessageActions({
 
   if (isLoading) return null;
   if (message.role === "user") return null;
-  if (message.toolInvocations && message.toolInvocations.length > 0)
+
+  // Don't show actions for messages that are only tool invocations
+  if (message.parts && !message.parts.some((part) => part.type === "text"))
     return null;
+
+  // Get the text content to copy - handle both formats
+  const getTextToCopy = () => {
+    if (message.parts && message.parts.some((part) => part.type === "text")) {
+      return message.parts
+        .filter((part) => part.type === "text")
+        .map((part) => part.text)
+        .join("\n");
+    }
+    return message.content as string;
+  };
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -44,7 +57,7 @@ export function PureMessageActions({
               className="py-1 px-2 h-fit text-muted-foreground"
               variant="outline"
               onClick={async () => {
-                await copyToClipboard(message.content as string);
+                await copyToClipboard(getTextToCopy());
                 toast.success("Copied to clipboard!");
               }}
             >

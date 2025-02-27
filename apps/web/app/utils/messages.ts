@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/start";
-import { Message, NewMessage, asc, db, eq, messages } from "db";
-
+import { Message as DBMessage, NewMessage, asc, db, eq, messages } from "db";
 type SaveMessagesInput = {
   messages: Array<NewMessage>;
 };
@@ -26,7 +25,7 @@ type GetMessagesByChatIdInput = {
 
 export async function getMessagesByChatId({
   id,
-}: GetMessagesByChatIdInput): Promise<Message[]> {
+}: GetMessagesByChatIdInput): Promise<DBMessage[]> {
   try {
     const result = await db
       .select()
@@ -42,7 +41,8 @@ export async function getMessagesByChatId({
 
 export const fetchMessagesByChatId = createServerFn({ method: "GET" })
   .validator((chatId: string) => chatId)
-  .handler(async ({ data: chatId }): Promise<Message[]> => {
+  // @ts-ignore
+  .handler(async ({ data: chatId }): Promise<DBMessage[]> => {
     try {
       return await getMessagesByChatId({ id: chatId });
     } catch (error) {

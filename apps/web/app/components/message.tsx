@@ -1,4 +1,4 @@
-import type { ChatRequestOptions, Message } from "ai";
+import type { ChatRequestOptions, Message, UIMessage } from "ai";
 import cx from "classnames";
 import { AnimatePresence, motion } from "framer-motion";
 import { memo, useMemo, useState } from "react";
@@ -43,9 +43,10 @@ const PurePreviewMessage = ({
   setMessages,
   reload,
   isReadonly,
+  previousMessage,
 }: {
   chatId: string;
-  message: Message;
+  message: UIMessage;
   // vote: Vote | undefined;
   isLoading: boolean;
   setMessages: (
@@ -55,6 +56,7 @@ const PurePreviewMessage = ({
     chatRequestOptions?: ChatRequestOptions
   ) => Promise<string | null | undefined>;
   isReadonly: boolean;
+  previousMessage: UIMessage | undefined;
 }) => {
   const [mode, setMode] = useState<"view" | "edit">("view");
 
@@ -75,13 +77,20 @@ const PurePreviewMessage = ({
             }
           )}
         >
-          {message.role === "assistant" && (
-            <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border bg-background">
-              <div className="translate-y-px">
-                <SparklesIcon size={14} />
+          {message.role === "assistant" &&
+            previousMessage?.role !== "assistant" && (
+              <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border bg-background">
+                <div className="translate-y-px">
+                  <SparklesIcon size={14} />
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          {message.role === "assistant" &&
+            previousMessage?.role === "assistant" && (
+              <div className="size-8 flex items-center rounded-full justify-center shrink-0 ring-border bg-background">
+                <div className="translate-y-px"></div>
+              </div>
+            )}
 
           <div className="flex flex-col gap-4 w-full">
             {message.experimental_attachments && (
@@ -102,107 +111,180 @@ const PurePreviewMessage = ({
               />
             )} */}
 
-            {message.toolInvocations && message.toolInvocations.length > 0 && (
+            {message.parts && message.parts.length > 0 && (
               <div className="flex flex-col gap-4">
-                {message.toolInvocations.map((toolInvocation) => {
-                  const { toolName, toolCallId, state, args } = toolInvocation;
+                {message.parts.map((part, index) => {
+                  if (part.type === "tool-invocation") {
+                    const toolInvocation = part.toolInvocation;
+                    const { toolName, toolCallId, state, args } =
+                      toolInvocation;
 
-                  if (state === "result") {
-                    const { result } = toolInvocation;
+                    if (state === "result") {
+                      const { result } = toolInvocation;
 
+                      return (
+                        <div key={toolCallId || index}>
+                          {toolName === "GetNextEmail" ? (
+                            <NextEmailUI args={args} result={result} />
+                          ) : toolName === "ArchiveEmail" ? (
+                            <ArchiveEmailUI args={args} result={result} />
+                          ) : toolName === "FilterSender" ? (
+                            <FilterSenderUI args={args} result={result} />
+                          ) : toolName === "AcceptInvite" ? (
+                            <AcceptInviteUI args={args} result={result} />
+                          ) : toolName === "Unsubscribe" ? (
+                            <UnsubscribeUI args={args} result={result} />
+                          ) : toolName === "CreateDraftReply" ? (
+                            <CreateDraftReplyUI args={args} result={result} />
+                          ) : toolName === "UpdateDraftReply" ? (
+                            <UpdateDraftReplyUI args={args} result={result} />
+                          ) : toolName === "SendDraft" ? (
+                            <SendDraftUI args={args} result={result} />
+                          ) : toolName === "DeleteDraft" ? (
+                            <DeleteDraftUI args={args} result={result} />
+                          ) : (
+                            <pre className="text-sm">
+                              {JSON.stringify({ toolName, result }, null, 2)}
+                            </pre>
+                          )}
+                        </div>
+                      );
+                    }
                     return (
-                      <div key={toolCallId}>
+                      <div
+                        key={toolCallId || index}
+                        className={cx({
+                          skeleton: ["getWeather"].includes(toolName),
+                        })}
+                      >
                         {toolName === "GetNextEmail" ? (
-                          <NextEmailUI args={args} result={result} />
+                          <NextEmailUI args={args} />
                         ) : toolName === "ArchiveEmail" ? (
-                          <ArchiveEmailUI args={args} result={result} />
+                          <ArchiveEmailUI args={args} />
                         ) : toolName === "FilterSender" ? (
-                          <FilterSenderUI args={args} result={result} />
+                          <FilterSenderUI args={args} />
                         ) : toolName === "AcceptInvite" ? (
-                          <AcceptInviteUI args={args} result={result} />
+                          <AcceptInviteUI args={args} />
                         ) : toolName === "Unsubscribe" ? (
-                          <UnsubscribeUI args={args} result={result} />
+                          <UnsubscribeUI args={args} />
                         ) : toolName === "CreateDraftReply" ? (
-                          <CreateDraftReplyUI args={args} result={result} />
+                          <CreateDraftReplyUI args={args} />
                         ) : toolName === "UpdateDraftReply" ? (
-                          <UpdateDraftReplyUI args={args} result={result} />
+                          <UpdateDraftReplyUI args={args} />
                         ) : toolName === "SendDraft" ? (
-                          <SendDraftUI args={args} result={result} />
+                          <SendDraftUI args={args} />
                         ) : toolName === "DeleteDraft" ? (
-                          <DeleteDraftUI args={args} result={result} />
+                          <DeleteDraftUI args={args} />
                         ) : (
                           <pre className="text-sm">
-                            {JSON.stringify({ toolName, result }, null, 2)}
+                            {JSON.stringify({ toolName, args }, null, 2)}
                           </pre>
                         )}
                       </div>
                     );
+                  } else if (part.type === "text") {
+                    // Handle text parts within the same loop
+                    return (
+                      <div
+                        key={index}
+                        className={cn("flex flex-row gap-2 items-start")}
+                      >
+                        {index === 0 &&
+                          message.role === "user" &&
+                          !isReadonly && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  className="px-2 h-fit rounded-full text-muted-foreground opacity-0 group-hover/message:opacity-100"
+                                  onClick={() => {
+                                    setMode("edit");
+                                  }}
+                                >
+                                  <PencilEditIcon />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Edit message</TooltipContent>
+                            </Tooltip>
+                          )}
+
+                        <div
+                          className={cn("flex flex-col gap-4", {
+                            "bg-primary text-primary-foreground px-3 py-2 rounded-xl":
+                              message.role === "user",
+                          })}
+                        >
+                          <Markdown>{part.text}</Markdown>
+                        </div>
+                      </div>
+                    );
+                  } else if (part.type === "reasoning") {
+                    // Handle reasoning parts if needed
+                    return (
+                      <div
+                        key={index}
+                        className="flex flex-row gap-2 items-start"
+                      >
+                        <div className="flex flex-col gap-4">
+                          <Markdown>{part.reasoning}</Markdown>
+                        </div>
+                      </div>
+                    );
                   }
+
+                  // Default rendering for unknown part types
                   return (
                     <div
-                      key={toolCallId}
-                      className={cx({
-                        skeleton: ["getWeather"].includes(toolName),
-                      })}
+                      key={index}
+                      className="flex flex-row gap-2 items-start"
                     >
-                      {toolName === "GetNextEmail" ? (
-                        <NextEmailUI args={args} />
-                      ) : toolName === "ArchiveEmail" ? (
-                        <ArchiveEmailUI args={args} />
-                      ) : toolName === "FilterSender" ? (
-                        <FilterSenderUI args={args} />
-                      ) : toolName === "AcceptInvite" ? (
-                        <AcceptInviteUI args={args} />
-                      ) : toolName === "Unsubscribe" ? (
-                        <UnsubscribeUI args={args} />
-                      ) : toolName === "CreateDraftReply" ? (
-                        <CreateDraftReplyUI args={args} />
-                      ) : toolName === "UpdateDraftReply" ? (
-                        <UpdateDraftReplyUI args={args} />
-                      ) : toolName === "SendDraft" ? (
-                        <SendDraftUI args={args} />
-                      ) : toolName === "DeleteDraft" ? (
-                        <DeleteDraftUI args={args} />
-                      ) : (
+                      <div className="flex flex-col gap-4">
                         <pre className="text-sm">
-                          {JSON.stringify({ toolName, args }, null, 2)}
+                          {JSON.stringify(
+                            { todo: "unhandled part", part },
+                            null,
+                            2
+                          )}
                         </pre>
-                      )}
+                      </div>
                     </div>
                   );
                 })}
               </div>
             )}
 
-            {(message.content || message.reasoning) && mode === "view" && (
-              <div className="flex flex-row gap-2 items-start">
-                {message.role === "user" && !isReadonly && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className="px-2 h-fit rounded-full text-muted-foreground opacity-0 group-hover/message:opacity-100"
-                        onClick={() => {
-                          setMode("edit");
-                        }}
-                      >
-                        <PencilEditIcon />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Edit message</TooltipContent>
-                  </Tooltip>
-                )}
+            {/* no parts. This is typically a user message since the AI SDK convertToCoreMessages assumes user messages have `content` string */}
+            {(!message.parts || message.parts.length === 0) &&
+              message.content &&
+              mode === "view" && (
+                <div className="flex flex-row gap-2 items-start">
+                  {message.role === "user" && !isReadonly && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className="px-2 h-fit rounded-full text-muted-foreground opacity-0 group-hover/message:opacity-100"
+                          onClick={() => {
+                            setMode("edit");
+                          }}
+                        >
+                          <PencilEditIcon />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Edit message</TooltipContent>
+                    </Tooltip>
+                  )}
 
-                <div
-                  className={cn("flex flex-col gap-4", {
-                    "bg-primary text-primary-foreground px-3 py-2 rounded-xl":
-                      message.role === "user",
-                  })}
-                >
-                  <Markdown>{message.content as string}</Markdown>
+                  <div
+                    className={cn("flex flex-col gap-4", {
+                      "bg-primary text-primary-foreground px-3 py-2 rounded-xl":
+                        message.role === "user",
+                    })}
+                  >
+                    <Markdown>{message.content as string}</Markdown>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {message.content && mode === "edit" && (
               <div className="flex flex-row gap-2 items-start">
@@ -241,13 +323,7 @@ export const PreviewMessage = memo(
     if (prevProps.message.reasoning !== nextProps.message.reasoning)
       return false;
     if (prevProps.message.content !== nextProps.message.content) return false;
-    if (
-      !equal(
-        prevProps.message.toolInvocations,
-        nextProps.message.toolInvocations
-      )
-    )
-      return false;
+    if (!equal(prevProps.message.parts, nextProps.message.parts)) return false;
     // if (!equal(prevProps.vote, nextProps.vote)) return false;
 
     return true;

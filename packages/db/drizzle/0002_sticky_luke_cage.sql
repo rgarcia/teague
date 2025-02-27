@@ -1,0 +1,1 @@
+ALTER TABLE `suggestions` ADD CONSTRAINT `suggestions_doc_fk` FOREIGN KEY (`documentId`,`documentCreatedAt`) REFERENCES `documents`(`id`,`createdAt`) ON DELETE no action ON UPDATE no action;
