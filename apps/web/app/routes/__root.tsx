@@ -30,6 +30,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import type { QueryClient } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { fetchUserServer } from "~/utils/users";
+import { ThemeProvider } from "~/components/theme-provider";
 
 const fetchClerkAuth = createServerFn({ method: "GET" }).handler(async () => {
   const { userId: clerkUserId } = await getAuth(getWebRequest()!);
@@ -119,13 +120,14 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html className="dark">
+    <html suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
       <body>
-        <Toaster position="top-center" />
-        {/* <div className="p-2 flex gap-2 text-lg">
+        <ThemeProvider>
+          <Toaster position="top-center" />
+          {/* <div className="p-2 flex gap-2 text-lg">
           <Link
             to="/"
             activeProps={{
@@ -153,13 +155,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <hr /> */}
-        {children}
-        {process.env.NODE_ENV === "development" && (
-          <>
-            <ReactQueryDevtools buttonPosition="bottom-left" />
-            <TanStackRouterDevtools position="bottom-right" />
-          </>
-        )}
+          {children}
+          {process.env.NODE_ENV === "development" && (
+            <>
+              <ReactQueryDevtools buttonPosition="bottom-left" />
+              <TanStackRouterDevtools position="bottom-right" />
+            </>
+          )}
+        </ThemeProvider>
         <Scripts />
       </body>
     </html>

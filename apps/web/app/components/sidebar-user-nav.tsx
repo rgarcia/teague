@@ -15,10 +15,11 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useClerk } from "@clerk/tanstack-start";
+import { useTheme } from "./theme-provider";
 type User = NonNullable<ReturnType<typeof useClerk>["user"]>;
 
 export function SidebarUserNav({ user }: { user: User }) {
-  // const { setTheme, theme } = useTheme();
+  const theme = useTheme();
   const { signOut } = useClerk();
 
   return (
@@ -46,10 +47,11 @@ export function SidebarUserNav({ user }: { user: User }) {
           >
             <DropdownMenuItem
               className="cursor-pointer"
-              // onSelect={() => setTheme(theme === "dark" ? "light" : "dark")}
+              onSelect={() =>
+                theme.set(theme.value === "light" ? "dark" : "light")
+              }
             >
-              {/* {`Toggle ${theme === "light" ? "dark" : "light"} mode`} */}
-              {`Toggle TODO mode`}
+              {`Toggle ${theme.value === "light" ? "dark" : "light"}`}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>

@@ -55,6 +55,9 @@ importers:
       '@legendapp/state':
         specifier: 3.0.0-beta.26
         version: 3.0.0-beta.26(react@19.0.0)
+      '@mantine/hooks':
+        specifier: ^7.17.0
+        version: 7.17.0(react@19.0.0)
       '@mastra/core':
         specifier: ^0.4.2
         version: 0.4.2(react@19.0.0)
@@ -151,6 +154,9 @@ importers:
       lucide-react:
         specifier: ^0.476.0
         version: 0.476.0(react@19.0.0)
+      outdent:
+        specifier: ^0.8.0
+        version: 0.8.0
       p-map:
         specifier: ^7.0.3
         version: 7.0.3
@@ -2130,6 +2136,11 @@ packages:
     resolution: {integrity: sha512-1RUqZ9wURWlHOXvafbnhRe2HGh+B7yfqvUQV3RWzS9c7oh1rJbeO7p0XDFFWyRjN8yYFbjlZDmRUcYr1Lo83qQ==}
     cpu: [x64]
     os: [win32]
+
+  '@mantine/hooks@7.17.0':
+    resolution: {integrity: sha512-vo3K49mLy1nJ8LQNb5KDbJgnX0xwt3Y8JOF3ythjB5LEFMptdLSSgulu64zj+QHtzvffFCsMb05DbTLLpVP/JQ==}
+    peerDependencies:
+      react: ^18.x || ^19.x
 
   '@mapbox/node-pre-gyp@2.0.0':
     resolution: {integrity: sha512-llMXd39jtP0HpQLVI37Bf1m2ADlEb35GYSh1SDSLsBhR+5iCxiNGlT31yqbNtVHygHAtMy6dWFERpU2JgufhPg==}
@@ -6542,6 +6553,9 @@ packages:
   openid-client@5.6.4:
     resolution: {integrity: sha512-T1h3B10BRPKfcObdBklX639tVz+xh34O7GjofqrqiAQdm7eHsQ00ih18x6wuJ/E6FxdtS2u3FmUGPDeEcMwzNA==}
 
+  outdent@0.8.0:
+    resolution: {integrity: sha512-KiOAIsdpUTcAXuykya5fnVVT+/5uS0Q1mrkRHcF89tpieSmY33O/tmc54CqwA+bfhbtEfZUNLHaPUiB9X3jt1A==}
+
   p-finally@1.0.0:
     resolution: {integrity: sha512-LICb2p9CB7FS+0eR1oqWnHhp0FljGLZCWBE9aix0Uye9W8LTQPwMTYVGWQWIw9RdQiDg4+epXQODwIYJtSJaow==}
     engines: {node: '>=4'}
@@ -9626,6 +9640,10 @@ snapshots:
 
   '@libsql/win32-x64-msvc@0.5.0-pre.6':
     optional: true
+
+  '@mantine/hooks@7.17.0(react@19.0.0)':
+    dependencies:
+      react: 19.0.0
 
   '@mapbox/node-pre-gyp@2.0.0':
     dependencies:
@@ -15637,6 +15655,8 @@ snapshots:
       lru-cache: 6.0.0
       object-hash: 2.2.0
       oidc-token-hash: 5.0.3
+
+  outdent@0.8.0: {}
 
   p-finally@1.0.0: {}
 
