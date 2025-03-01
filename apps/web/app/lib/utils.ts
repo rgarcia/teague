@@ -7,6 +7,7 @@ import {
 } from "@ai-sdk/ui-utils";
 import {
   CoreAssistantMessage,
+  CoreMessage,
   CoreToolMessage,
   ToolCallPart,
   ToolResultPart,
@@ -77,6 +78,16 @@ export function sanitizeUIMessages(
 export function getMostRecentUserMessage(
   messages: Array<UIMessage>
 ): UIMessage {
+  const userMessages = messages.filter((message) => message.role === "user");
+  if (userMessages.length === 0) {
+    throw new Error("No user messages found");
+  }
+  return userMessages.at(-1)!;
+}
+
+export function getMostRecentCoreUserMessage(
+  messages: Array<CoreMessage>
+): CoreMessage {
   const userMessages = messages.filter((message) => message.role === "user");
   if (userMessages.length === 0) {
     throw new Error("No user messages found");

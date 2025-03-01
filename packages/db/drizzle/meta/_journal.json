@@ -29,6 +29,13 @@
       "when": 1740580821754,
       "tag": "0003_early_firestar",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1740775296090,
+      "tag": "0004_nervous_wilson_fisk",
+      "breakpoints": true
     }
   ]
 }

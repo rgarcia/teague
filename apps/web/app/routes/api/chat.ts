@@ -1,23 +1,21 @@
-// import { google } from "@ai-sdk/google";
+//import { openai } from "@ai-sdk/openai";
 import { openai } from "@ai-sdk/openai";
 import { getAuth } from "@clerk/tanstack-start/server";
 import { Mastra } from "@mastra/core";
 import { Agent } from "@mastra/core/agent";
+import { createLogger } from "@mastra/core/logger";
 // import { DefaultStorage, DefaultVectorDB } from "@mastra/core/storage";
 import { createTool } from "@mastra/core/tools";
-// import { Memory } from "@mastra/memory";
+import { Memory } from "@mastra/memory";
 import { json } from "@tanstack/start";
 import { createAPIFileRoute } from "@tanstack/start/api";
-import {
-  convertToCoreMessages,
-  CoreMessage,
-  CoreSystemMessage,
-  Message,
-  StepResult,
-} from "ai";
+import { convertToCoreMessages, CoreMessage, StepResult, UIMessage } from "ai";
 import type { ChatPromptClient } from "langfuse";
-// import { voyage } from "voyage-ai-provider";
+import { voyage } from "voyage-ai-provider";
+import { MySQLStorage } from "~/lib/mastra/mysqlStorage";
+import { TurbopufferVector } from "~/lib/turbopuffer";
 import {
+  getMostRecentCoreUserMessage,
   getMostRecentUserMessage,
   sanitizeResponseMessages,
 } from "~/lib/utils";
@@ -30,51 +28,76 @@ import { getUser } from "~/utils/users";
 
 let systemPrompt: ChatPromptClient;
 
-// for some reason this is causing multiple unrelated tool calls to be made (e.g. getnextemail while creating a draft to the current email)
-// const memory = new Memory({
-//   embedder: voyage("voyage-3-large"),
-//   storage: new DefaultStorage({
-//     config: {
-//       url: "file:memory.db",
-//     },
-//   }),
-//   vector: new DefaultVectorDB({
-//     connectionUrl: "file:vector.db",
-//   }),
-//   // https://mastra.ai/blog/using-ai-sdk-with-mastra#1-agent-memory
-//   options: {
-//     lastMessages: 6,
-//     // semanticRecall: {
-//     //   messageRange: 1,
-//     //   topK: 3,
-//     // },
-//     workingMemory: {
-//       enabled: true,
-//       template: `<preferred-name></preferred-name>
-//         <preferred-draft-tone></preferred-draft-tone>
-//         <preferred-draft-guidance></preferred-draft-guidance>`,
-//     },
-//   },
-// });
-
-const mastra = new Mastra({
-  agents: {
-    cannon: new Agent({
-      // TODO: understand this a bit better before turning it on
-      // memory,
-      name: "Cannon",
-      instructions: "", // we will set this in context at generation time
-      model: openai("gpt-4o"),
-    }),
+const tpuf = new TurbopufferVector({
+  apiKey: process.env.TURBOPUFFER_API_KEY!,
+  baseUrl: "https://gcp-us-central1.turbopuffer.com",
+  schemaConfigForIndex: (indexName: string) => {
+    if (indexName === "memory_messages") {
+      return {
+        dimensions: 1024, // voyage-3-large
+        schema: {
+          thread_id: {
+            type: "string",
+            filterable: true,
+          },
+        },
+      };
+    } else {
+      throw new Error(`TODO: add schema for index: ${indexName}`);
+    }
   },
-  telemetry: {
-    serviceName: "ai",
-    export: {
-      type: "custom",
-      exporter: langfuseExporter,
+});
+
+const memory = new Memory({
+  embedder: voyage("voyage-3-large"),
+  storage: new MySQLStorage() as any,
+  vector: tpuf,
+  // https://mastra.ai/blog/using-ai-sdk-with-mastra#1-agent-memory
+  options: {
+    lastMessages: 6,
+    semanticRecall: {
+      messageRange: 1,
+      topK: 3,
+    },
+    workingMemory: {
+      enabled: true,
+      template: `<preferred-name></preferred-name>
+        <preferred-draft-tone></preferred-draft-tone>
+        <preferred-draft-guidance></preferred-draft-guidance>`,
     },
   },
 });
+
+let _mastra: Mastra | null = null;
+
+function initMastra(cannonSystemMessage: string): Mastra {
+  if (_mastra) {
+    return _mastra;
+  }
+  _mastra = new Mastra({
+    logger: createLogger({
+      name: "Mastra",
+      level: "debug",
+    }),
+    agents: {
+      cannon: new Agent({
+        memory,
+        name: "Cannon",
+        instructions: cannonSystemMessage,
+        model: openai("gpt-4o"),
+        //model: google("gemini-2.0-flash-001"),
+      }),
+    },
+    telemetry: {
+      serviceName: "ai",
+      export: {
+        type: "custom",
+        exporter: langfuseExporter,
+      },
+    },
+  });
+  return _mastra;
+}
 
 export const APIRoute = createAPIFileRoute("/api/chat")({
   POST: async ({ request, params }) => {
@@ -95,10 +118,6 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
       if (!systemPromptText) {
         throw new Error("Could not find system prompt");
       }
-      const systemPromptMessage: CoreSystemMessage = {
-        role: "system",
-        content: systemPromptText,
-      };
 
       const { userId: clerkUserId } = await getAuth(request);
       if (!clerkUserId) {
@@ -147,7 +166,7 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
         id,
         messages,
         selectedChatModel,
-      }: { id: string; messages: Array<Message>; selectedChatModel: string } =
+      }: { id: string; messages: Array<UIMessage>; selectedChatModel: string } =
         await request.json();
 
       // for some reason user messages are losing content field, so fix that
@@ -165,7 +184,9 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
       });
 
       const coreMessages: CoreMessage[] = convertToCoreMessages(messages);
-      const userMessage: Message = getMostRecentUserMessage(messages);
+      const userMessage: UIMessage = getMostRecentUserMessage(messages);
+      const coreUserMessage: CoreMessage =
+        getMostRecentCoreUserMessage(coreMessages);
 
       const chat = await getChat({ chatId: id });
       if (!chat) {
@@ -187,27 +208,43 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
       });
 
       //  Order of ops: instructions, ...context, ...memories, ...messages
-      const res = await mastra.getAgent("cannon").stream([], {
-        context: [systemPromptMessage, ...coreMessages],
-        toolsets: { "this-name-doesnt-matter": tools },
-        resourceId: clerkUserId,
-        // threadId,
-        onFinish: async (result) => {
-          try {
-            const stepResult = JSON.parse(result) as StepResult<any>;
-            const { response } = stepResult;
-            const toSave = sanitizeResponseMessages({
-              chatId: id,
-              messages: response.messages,
-            });
-            await saveMessages({
-              messages: toSave,
-            });
-          } catch (error) {
-            console.error("Error in onFinish:", error);
-          }
-        },
-      });
+      const res = await initMastra(systemPromptText)
+        .getAgent("cannon")
+        .stream([coreUserMessage], {
+          toolsets: { "this-name-doesnt-matter": tools },
+          resourceId: user.id,
+          threadId: id,
+          memoryOptions: {
+            lastMessages: 6,
+            semanticRecall: {
+              messageRange: 1,
+              topK: 3,
+            },
+            workingMemory: {
+              enabled: true,
+              template: `<preferred-name></preferred-name>
+        <preferred-draft-tone></preferred-draft-tone>
+        <preferred-draft-guidance></preferred-draft-guidance>`,
+            },
+          },
+          onFinish: async (result) => {
+            try {
+              const stepResult = JSON.parse(result) as StepResult<any>;
+              const { response } = stepResult;
+              const toSave = sanitizeResponseMessages({
+                chatId: id,
+                messages: response.messages,
+              });
+              if (toSave.length > 0) {
+                await saveMessages({
+                  messages: toSave,
+                });
+              }
+            } catch (error) {
+              console.error("Error in onFinish:", error);
+            }
+          },
+        });
 
       return res.toDataStreamResponse({
         getErrorMessage: (error) => {

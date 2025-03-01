@@ -1,13 +1,16 @@
 import { createId } from "@paralleldrive/cuid2";
 import {
+  bigint,
   boolean,
   foreignKey,
   index,
+  int,
   json,
   mysqlTable,
   primaryKey,
   text,
   timestamp,
+  unique,
   varchar,
 } from "drizzle-orm/mysql-core";
 import { lifecycleDates } from "./util/lifecycle-dates";
@@ -38,6 +41,7 @@ export const chats = mysqlTable("chats", {
   visibility: varchar("visibility", { length: 32, enum: ["public", "private"] })
     .notNull()
     .default("private"),
+  metadata: json("metadata"),
   ...lifecycleDates,
 });
 
@@ -118,3 +122,77 @@ export const suggestions = mysqlTable(
     }),
   ]
 );
+
+export const mastraWorkflowSnapshots = mysqlTable(
+  "mastra_workflow_snapshot",
+  {
+    id: varchar("id", { length: 128 })
+      .$defaultFn(() => createId())
+      .primaryKey()
+      .notNull(),
+    workflowName: varchar("workflow_name", { length: 255 }).notNull(),
+    runId: varchar("run_id", { length: 255 }).notNull(),
+    snapshot: text("snapshot").notNull(),
+    ...lifecycleDates,
+  },
+  (table) => [
+    unique("workflow_name_run_id_unique").on(table.workflowName, table.runId),
+  ]
+);
+
+export const mastraEvals = mysqlTable("mastra_evals", {
+  id: varchar("id", { length: 128 })
+    .$defaultFn(() => createId())
+    .primaryKey()
+    .notNull(),
+  input: text("input").notNull(),
+  output: text("output").notNull(),
+  result: json("result").notNull(),
+  agentName: text("agent_name").notNull(),
+  metricName: text("metric_name").notNull(),
+  instructions: text("instructions").notNull(),
+  testInfo: json("test_info"),
+  globalRunId: text("global_run_id").notNull(),
+  runId: text("run_id").notNull(),
+  createdAt: lifecycleDates.createdAt,
+});
+
+export const mastraThreads = mysqlTable(
+  "mastra_threads",
+  {
+    id: varchar("id", { length: 128 }).primaryKey().notNull(),
+    resourceId: varchar("resourceId", { length: 255 }).notNull(),
+    title: text("title").notNull(),
+    metadata: text("metadata"),
+    ...lifecycleDates,
+  },
+  (table) => [index("resource_id_idx").on(table.resourceId)]
+);
+
+export const mastraMessages = mysqlTable("mastra_messages", {
+  id: varchar("id", { length: 128 }).primaryKey().notNull(),
+  threadId: varchar("thread_id", { length: 128 })
+    .notNull()
+    .references(() => mastraThreads.id),
+  content: text("content").notNull(),
+  role: text("role").notNull(),
+  type: text("type").notNull(),
+  createdAt: lifecycleDates.createdAt,
+});
+
+export const mastraTraces = mysqlTable("mastra_traces", {
+  id: varchar("id", { length: 128 }).primaryKey().notNull(),
+  parentSpanId: text("parentSpanId"),
+  name: text("name").notNull(),
+  traceId: text("traceId").notNull(),
+  scope: text("scope").notNull(),
+  kind: int("kind").notNull(),
+  attributes: json("attributes"),
+  status: json("status"),
+  events: json("events"),
+  links: json("links"),
+  other: text("other"),
+  startTime: bigint("startTime", { mode: "bigint" }).notNull(),
+  endTime: bigint("endTime", { mode: "bigint" }).notNull(),
+  ...lifecycleDates,
+});
