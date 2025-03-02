@@ -21,6 +21,7 @@
     "@clerk/tanstack-start": "0.10.0",
     "@googleapis/calendar": "^9.7.9",
     "@googleapis/gmail": "^12.0.0",
+    "@isaacs/ttlcache": "^1.4.1",
     "@langchain/community": "^0.3.32",
     "@legendapp/state": "3.0.0-beta.26",
     "@mantine/hooks": "^7.17.0",

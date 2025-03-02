@@ -1,5 +1,6 @@
 import { clerk } from "@/utils/clerk";
 import { getAuth } from "@clerk/tanstack-start/server";
+import TTLCache from "@isaacs/ttlcache";
 import { createServerFn } from "@tanstack/start";
 import { getWebRequest } from "@tanstack/start/server";
 import { db, eq, User, users } from "db";
@@ -7,6 +8,27 @@ import { db, eq, User, users } from "db";
 type GetUserInput = {
   clerkUserId: string;
 };
+
+const getUserCache = new TTLCache<string, User>({
+  ttl: 1000 * 60 * 60 * 2, // 2 hours
+});
+
+export async function cachedGetUser({
+  clerkUserId,
+}: GetUserInput): Promise<User> {
+  try {
+    const cachedUser = getUserCache.get(clerkUserId);
+    if (cachedUser) {
+      return cachedUser;
+    }
+    const user = await getUser({ clerkUserId });
+    getUserCache.set(clerkUserId, user);
+    return user;
+  } catch (error) {
+    console.error(`cachedGetUser '${clerkUserId}' error`, error);
+    throw error;
+  }
+}
 
 export async function getUser({ clerkUserId }: GetUserInput): Promise<User> {
   try {

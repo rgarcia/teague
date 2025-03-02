@@ -85,6 +85,23 @@ export function getMostRecentUserMessage(
   return userMessages.at(-1)!;
 }
 
+export function getMostRecentNCoreUserMessages(
+  messages: Array<CoreMessage>,
+  n: number
+): Array<CoreMessage> {
+  // loop through messages from last to first right up until the point where you have n user messages
+  let count = 0;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === "user") {
+      count++;
+    }
+    if (count === n) {
+      return messages.slice(i);
+    }
+  }
+  return messages;
+}
+
 export function getMostRecentCoreUserMessage(
   messages: Array<CoreMessage>
 ): CoreMessage {

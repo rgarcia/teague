@@ -1,39 +1,22 @@
 import { createClerkClient, User, verifyToken } from "@clerk/backend";
+import TTLCache from "@isaacs/ttlcache";
 
 export const clerk = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY,
 });
 
-interface CachedUser {
-  user: User;
-  timestamp: number;
-}
-
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes in milliseconds
-const cachedUsers = new Map<string, CachedUser>();
-
-function cachedUsersGet(clerkUserId: string): User | undefined {
-  const cachedUser = cachedUsers.get(clerkUserId);
-  if (!cachedUser || isExpired(cachedUser.timestamp)) {
-    return undefined;
-  }
-  return cachedUser.user;
-}
-
-function cachedUsersSet(clerkUserId: string, user: User) {
-  cachedUsers.set(clerkUserId, { user, timestamp: Date.now() });
-}
-
-function isExpired(timestamp: number): boolean {
-  return Date.now() - timestamp > CACHE_TTL;
-}
+const userCache = new TTLCache<string, User>({
+  ttl: 10 * 60 * 1000, // 10 minutes in milliseconds
+});
 
 export async function cachedGetUser(clerkUserId: string): Promise<User> {
-  let user = cachedUsersGet(clerkUserId);
-  if (!user) {
-    user = await clerk.users.getUser(clerkUserId);
-    cachedUsersSet(clerkUserId, user);
+  const cachedUser = userCache.get(clerkUserId);
+  if (cachedUser) {
+    return cachedUser;
   }
+
+  const user = await clerk.users.getUser(clerkUserId);
+  userCache.set(clerkUserId, user);
   return user;
 }
 
