@@ -44,6 +44,9 @@ export default $config({
       },
       langfuse: {
         secretKey: new sst.Secret("LangfuseSecretKey"),
+        otelExporterOtlpHeaders: new sst.Secret(
+          "LangfuseOtelExporterOtlpHeaders"
+        ),
       },
       openai: {
         apiKey: new sst.Secret("OpenAIApiKey"),
@@ -122,6 +125,18 @@ export default $config({
       {
         name: "DATABASE_PASSWORD",
         value: secrets.planetscale.password.value,
+      },
+      {
+        name: "OTEL_EXPORTER_OTLP_ENABLED",
+        value: "false",
+      },
+      {
+        name: "OTEL_EXPORTER_OTLP_ENDPOINT",
+        value: "https://us.cloud.langfuse.com/api/public/otel/v1/traces",
+      },
+      {
+        name: "OTEL_EXPORTER_OTLP_HEADERS",
+        value: secrets.langfuse.otelExporterOtlpHeaders.value,
       },
       {
         name: "PORT",
