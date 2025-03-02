@@ -32,9 +32,11 @@ const tpuf = new TurbopufferVector({
   apiKey: process.env.TURBOPUFFER_API_KEY!,
   baseUrl: "https://gcp-us-central1.turbopuffer.com",
   schemaConfigForIndex: (indexName: string) => {
+    // mastra's default embedding model is fast embed with bge-small: https://github.com/mastra-ai/mastra/blob/69bec47a67c1a37500b50e52538f620e77f45f52/packages/core/src/vector/fastembed.ts#L115
+    // this indexName and dimensions are set when mastra uses these defaults
     if (indexName === "memory_messages_384") {
       return {
-        dimensions: 384, // voyage-3-large
+        dimensions: 384,
         schema: {
           thread_id: {
             type: "string",
