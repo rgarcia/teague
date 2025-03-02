@@ -1,5 +1,5 @@
+import { google } from "@ai-sdk/google";
 //import { openai } from "@ai-sdk/openai";
-import { openai } from "@ai-sdk/openai";
 import { getAuth } from "@clerk/tanstack-start/server";
 import { Mastra } from "@mastra/core";
 import { Agent } from "@mastra/core/agent";
@@ -10,8 +10,7 @@ import { Memory } from "@mastra/memory";
 import { json } from "@tanstack/start";
 import { createAPIFileRoute } from "@tanstack/start/api";
 import { convertToCoreMessages, CoreMessage, StepResult, UIMessage } from "ai";
-import type { ChatPromptClient } from "langfuse";
-import { voyage } from "voyage-ai-provider";
+import { ChatPromptClient } from "langfuse";
 import { MySQLStorage } from "~/lib/mastra/mysqlStorage";
 import { TurbopufferVector } from "~/lib/turbopuffer";
 import {
@@ -20,9 +19,10 @@ import {
   sanitizeResponseMessages,
 } from "~/lib/utils";
 import { getChat } from "~/utils/chats";
-import { clerk } from "~/utils/clerk";
-import { langfuse, langfuseExporter } from "~/utils/langfuse";
+import { cachedGetUser } from "~/utils/clerk";
+import { langfuse } from "~/utils/langfuse";
 import { saveMessages } from "~/utils/messages";
+import { cachedGoogleToken } from "~/utils/tokeninfo";
 import registry from "~/utils/tools/all-tools";
 import { getUser } from "~/utils/users";
 
@@ -32,9 +32,9 @@ const tpuf = new TurbopufferVector({
   apiKey: process.env.TURBOPUFFER_API_KEY!,
   baseUrl: "https://gcp-us-central1.turbopuffer.com",
   schemaConfigForIndex: (indexName: string) => {
-    if (indexName === "memory_messages") {
+    if (indexName === "memory_messages_384") {
       return {
-        dimensions: 1024, // voyage-3-large
+        dimensions: 384, // voyage-3-large
         schema: {
           thread_id: {
             type: "string",
@@ -49,7 +49,6 @@ const tpuf = new TurbopufferVector({
 });
 
 const memory = new Memory({
-  embedder: voyage("voyage-3-large"),
   storage: new MySQLStorage() as any,
   vector: tpuf,
   // https://mastra.ai/blog/using-ai-sdk-with-mastra#1-agent-memory
@@ -84,15 +83,20 @@ function initMastra(cannonSystemMessage: string): Mastra {
         memory,
         name: "Cannon",
         instructions: cannonSystemMessage,
-        model: openai("gpt-4o"),
-        //model: google("gemini-2.0-flash-001"),
+        //model: openai("gpt-4o"),
+        model: google("gemini-2.0-flash-001"),
       }),
     },
     telemetry: {
+      // serviceName: "ai",
+      // export: {
+      //   type: "custom",
+      //   exporter: langfuseExporter,
+      // },
       serviceName: "ai",
+      enabled: true,
       export: {
-        type: "custom",
-        exporter: langfuseExporter,
+        type: "otlp",
       },
     },
   });
@@ -123,11 +127,10 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
       if (!clerkUserId) {
         return json({ error: "Unauthorized" }, { status: 401 });
       }
-      const [clerkUser, clerkRes] = await Promise.all([
-        clerk.users.getUser(clerkUserId),
-        clerk.users.getUserOauthAccessToken(clerkUserId, "google"),
+      const [clerkUser, { token: googleToken }] = await Promise.all([
+        cachedGetUser(clerkUserId),
+        cachedGoogleToken(clerkUserId),
       ]);
-      const googleToken = clerkRes.data[0].token;
 
       const user = await getUser({ clerkUserId });
       if (!user) {
