@@ -49,6 +49,9 @@ importers:
       '@googleapis/gmail':
         specifier: ^12.0.0
         version: 12.0.0
+      '@isaacs/ttlcache':
+        specifier: ^1.4.1
+        version: 1.4.1
       '@langchain/community':
         specifier: ^0.3.32
         version: 0.3.32(@aws-crypto/sha256-js@5.2.0)(@aws-sdk/credential-provider-node@3.750.0)(@browserbasehq/sdk@2.3.0)(@browserbasehq/stagehand@1.12.0(@playwright/test@1.50.1)(deepmerge@4.3.1)(dotenv@16.4.7)(openai@4.85.1(ws@8.18.0)(zod@3.24.2))(zod@3.24.2))(@ibm-cloud/watsonx-ai@1.5.0(@langchain/core@0.3.40(openai@4.85.1(ws@8.18.0)(zod@3.24.2))))(@langchain/core@0.3.40(openai@4.85.1(ws@8.18.0)(zod@3.24.2)))(@libsql/client@0.14.0)(@planetscale/database@1.19.0)(@smithy/util-utf8@2.3.0)(@upstash/redis@1.34.4)(axios@1.7.9)(cohere-ai@7.15.4)(crypto-js@4.2.0)(fast-xml-parser@4.4.1)(google-auth-library@9.15.1)(ibm-cloud-sdk-core@5.1.3)(ioredis@5.5.0)(jsonwebtoken@9.0.2)(lodash@4.17.21)(openai@4.85.1(ws@8.18.0)(zod@3.24.2))(pg@8.13.3)(playwright@1.50.1)(redis@4.7.0)(ws@8.18.0)
@@ -59,17 +62,20 @@ importers:
         specifier: ^7.17.0
         version: 7.17.0(react@19.0.0)
       '@mastra/core':
-        specifier: ^0.4.2
-        version: 0.4.2(react@19.0.0)
+        specifier: ^0.4.3-alpha.1
+        version: 0.4.3-alpha.1(react@19.0.0)
       '@mastra/memory':
-        specifier: ^0.1.5
-        version: 0.1.5(react@19.0.0)(zod@3.24.2)
+        specifier: ^0.1.6-alpha.1
+        version: 0.1.6-alpha.1(react@19.0.0)(zod@3.24.2)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
       '@opentelemetry/auto-instrumentations-node':
         specifier: ^0.56.1
         version: 0.56.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/exporter-trace-otlp-http':
+        specifier: ^0.57.2
+        version: 0.57.2(@opentelemetry/api@1.9.0)
       '@opentelemetry/resources':
         specifier: ^1.30.1
         version: 1.30.1(@opentelemetry/api@1.9.0)
@@ -1555,6 +1561,10 @@ packages:
     resolution: {integrity: sha512-wgm9Ehl2jpeqP3zw/7mo3kRHFp5MEDhqAdwy1fTGkHAwnkGOVsgpvQhL8B5n1qlb01jV3n/bI0ZfZp5lWA1k4w==}
     engines: {node: '>=18.0.0'}
 
+  '@isaacs/ttlcache@1.4.1':
+    resolution: {integrity: sha512-RQgQ4uQ+pLbqXfOmieB91ejmLwvSgv9nLx6sT6sD83s7umBypgg+OIBOBbEUiJXrfpnp9j0mRhYYdzp9uqq3lA==}
+    engines: {node: '>=12'}
+
   '@istanbuljs/load-nyc-config@1.1.0':
     resolution: {integrity: sha512-VjeHSlIzpv/NyD3N0YuHfXOPDIixcA1q2ZV98wsMqcYlPmv2n3Yb2lYP9XMElnaFVXg5A7YLTeLu6V84uQDjmQ==}
     engines: {node: '>=8'}
@@ -2147,12 +2157,12 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  '@mastra/core@0.4.2':
-    resolution: {integrity: sha512-zLh4Lv8EWasPRHGcrZvp8nYDa5TlQr1IyHD9Q19l9096riuQqE3Y0+S99GPupdkh49q3Uel3C8P4hCFgQCoAXw==}
+  '@mastra/core@0.4.3-alpha.1':
+    resolution: {integrity: sha512-U37J/8hBVBCra/cFF45FjnO6hgnxSNzJEddSNWGyEFbfPGK8TkgW+4OMU7fQDdU96zqev8KXGK0TkLC4CZnC6Q==}
     engines: {node: '>=20'}
 
-  '@mastra/memory@0.1.5':
-    resolution: {integrity: sha512-BvrQNB3CNM2lmKT7lZmZBSJlg87Sc0RfuZLlW0r+xlDbX1e8wOFWZiK3mxcE0ALAj1ltLX1dDWa4hQUjU84fEA==}
+  '@mastra/memory@0.1.6-alpha.1':
+    resolution: {integrity: sha512-NbAaaNlrYBrqgRuu5yH4b2Z0kgO17hdO0uwcQZsphr/b+408jj3Ek5aDCWbKuxH5+Bs3wrWyAebX2hdFCyMgRg==}
 
   '@mixmark-io/domino@2.2.0':
     resolution: {integrity: sha512-Y28PR25bHXUg88kCV7nivXrP2Nj2RueZ3/l/jdx6J9f8J4nsEGcgX0Qe6lt7Pa+J79+kPiJU3LguR6O/6zrLOw==}
@@ -6024,12 +6034,10 @@ packages:
 
   libsql@0.4.7:
     resolution: {integrity: sha512-T9eIRCs6b0J1SHKYIvD8+KCJMcWZ900iZyxdnSCdqxN12Z1ijzT+jY5nrk72Jw4B0HGzms2NgpryArlJqvc3Lw==}
-    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   libsql@0.5.0-pre.6:
     resolution: {integrity: sha512-TvugJnL32QiZCvpu6Eh/uh2RjpzsxprqVd2hWygHFUK5abcotaRWYrHmuygXFe43QmsJrmYjN0DAKLqoiy8d2w==}
-    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   lilconfig@3.1.3:
@@ -9275,6 +9283,8 @@ snapshots:
     dependencies:
       minipass: 7.1.2
 
+  '@isaacs/ttlcache@1.4.1': {}
+
   '@istanbuljs/load-nyc-config@1.1.0':
     dependencies:
       camelcase: 5.3.1
@@ -9658,7 +9668,7 @@ snapshots:
       - encoding
       - supports-color
 
-  '@mastra/core@0.4.2(react@19.0.0)':
+  '@mastra/core@0.4.3-alpha.1(react@19.0.0)':
     dependencies:
       '@libsql/client': 0.14.0
       '@opentelemetry/api': 1.9.0
@@ -9694,9 +9704,9 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@mastra/memory@0.1.5(react@19.0.0)(zod@3.24.2)':
+  '@mastra/memory@0.1.6-alpha.1(react@19.0.0)(zod@3.24.2)':
     dependencies:
-      '@mastra/core': 0.4.2(react@19.0.0)
+      '@mastra/core': 0.4.3-alpha.1(react@19.0.0)
       '@upstash/redis': 1.34.4
       ai: 4.1.46(react@19.0.0)(zod@3.24.2)
       pg: 8.13.3
@@ -14201,7 +14211,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.7.9)
+      retry-axios: 2.6.0(axios@1.7.9(debug@4.4.0))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -16157,7 +16167,7 @@ snapshots:
       path-parse: 1.0.7
       supports-preserve-symlinks-flag: 1.0.0
 
-  retry-axios@2.6.0(axios@1.7.9):
+  retry-axios@2.6.0(axios@1.7.9(debug@4.4.0)):
     dependencies:
       axios: 1.7.9(debug@4.4.0)
 

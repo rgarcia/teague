@@ -10,7 +10,6 @@ type GetChatInput = {
 export async function getChat({ chatId }: GetChatInput): Promise<Chat | null> {
   const select = await db.select().from(chats).where(eq(chats.id, chatId));
   if (select.length === 0) {
-    console.log(`DEBUG getChat '${chatId}' found no chat`);
     return null;
   }
   return select[0];
@@ -18,6 +17,7 @@ export async function getChat({ chatId }: GetChatInput): Promise<Chat | null> {
 
 export const fetchChatServer = createServerFn({ method: "GET" })
   .validator((chatId: string) => chatId)
+  // @ts-ignore, metadata column can't deal
   .handler(async ({ data: chatId }) => {
     return getChat({ chatId });
   });
@@ -33,13 +33,14 @@ export async function saveChat({
   userId,
   title,
 }: SaveChatInput): Promise<void> {
-  console.log("DEBUG saveChat", id, userId, title);
+  const now = new Date();
   try {
     await db.insert(chats).values({
       id,
       userId,
       title,
-      createdAt: new Date(),
+      createdAt: now,
+      updatedAt: now,
     });
   } catch (error) {
     console.error("Failed to save chat in database");

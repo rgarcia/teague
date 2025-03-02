@@ -19,10 +19,6 @@ type GetMessagesByChatIdInput = {
   id: string;
 };
 
-// type MessageWithKnownContent = Message & {
-//   content: string
-// }
-
 export async function getMessagesByChatId({
   id,
 }: GetMessagesByChatIdInput): Promise<DBMessage[]> {

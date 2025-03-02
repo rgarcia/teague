@@ -1,53 +1,58 @@
-// import { google } from "@ai-sdk/google";
-import { openai } from "@ai-sdk/openai";
+import { google } from "@ai-sdk/google";
+//import { openai } from "@ai-sdk/openai";
 import { getAuth } from "@clerk/tanstack-start/server";
 import { Mastra } from "@mastra/core";
 import { Agent } from "@mastra/core/agent";
+import { createLogger, LogLevel } from "@mastra/core/logger";
 // import { DefaultStorage, DefaultVectorDB } from "@mastra/core/storage";
 import { createTool } from "@mastra/core/tools";
-// import { Memory } from "@mastra/memory";
 import { json } from "@tanstack/start";
 import { createAPIFileRoute } from "@tanstack/start/api";
+import { convertToCoreMessages, CoreMessage, StepResult, UIMessage } from "ai";
 import {
-  convertToCoreMessages,
-  CoreMessage,
-  CoreSystemMessage,
-  Message,
-  StepResult,
-} from "ai";
-import type { ChatPromptClient } from "langfuse";
-// import { voyage } from "voyage-ai-provider";
-import {
+  getMostRecentNCoreUserMessages,
   getMostRecentUserMessage,
   sanitizeResponseMessages,
 } from "~/lib/utils";
-import { getChat } from "~/utils/chats";
-import { clerk } from "~/utils/clerk";
+import { cachedGetUser } from "~/utils/clerk";
 import { langfuse, langfuseExporter } from "~/utils/langfuse";
 import { saveMessages } from "~/utils/messages";
+import { cachedGoogleToken } from "~/utils/tokeninfo";
 import registry from "~/utils/tools/all-tools";
-import { getUser } from "~/utils/users";
+import { cachedGetUser as cachedGetUserFromDB } from "~/utils/users";
 
-let systemPrompt: ChatPromptClient;
+// const tpuf = new TurbopufferVector({
+//   apiKey: process.env.TURBOPUFFER_API_KEY!,
+//   baseUrl: "https://gcp-us-central1.turbopuffer.com",
+//   schemaConfigForIndex: (indexName: string) => {
+//     // mastra's default embedding model is fast embed with bge-small: https://github.com/mastra-ai/mastra/blob/69bec47a67c1a37500b50e52538f620e77f45f52/packages/core/src/vector/fastembed.ts#L115
+//     // this indexName and dimensions are set when mastra uses these defaults
+//     if (indexName === "memory_messages_384") {
+//       return {
+//         dimensions: 384,
+//         schema: {
+//           thread_id: {
+//             type: "string",
+//             filterable: true,
+//           },
+//         },
+//       };
+//     } else {
+//       throw new Error(`TODO: add schema for index: ${indexName}`);
+//     }
+//   },
+// });
 
-// for some reason this is causing multiple unrelated tool calls to be made (e.g. getnextemail while creating a draft to the current email)
 // const memory = new Memory({
-//   embedder: voyage("voyage-3-large"),
-//   storage: new DefaultStorage({
-//     config: {
-//       url: "file:memory.db",
-//     },
-//   }),
-//   vector: new DefaultVectorDB({
-//     connectionUrl: "file:vector.db",
-//   }),
+//   storage: new MySQLStorage() as any,
+//   vector: tpuf,
 //   // https://mastra.ai/blog/using-ai-sdk-with-mastra#1-agent-memory
 //   options: {
 //     lastMessages: 6,
-//     // semanticRecall: {
-//     //   messageRange: 1,
-//     //   topK: 3,
-//     // },
+//     semanticRecall: {
+//       messageRange: 1,
+//       topK: 3,
+//     },
 //     workingMemory: {
 //       enabled: true,
 //       template: `<preferred-name></preferred-name>
@@ -57,60 +62,73 @@ let systemPrompt: ChatPromptClient;
 //   },
 // });
 
-const mastra = new Mastra({
-  agents: {
-    cannon: new Agent({
-      // TODO: understand this a bit better before turning it on
-      // memory,
-      name: "Cannon",
-      instructions: "", // we will set this in context at generation time
-      model: openai("gpt-4o"),
+let mastra: Mastra | null = null;
+
+const initPromise = new Promise<void>(async (resolve, reject) => {
+  const systemPrompt = await langfuse.getPrompt("system-prompt", undefined, {
+    label: "production",
+    type: "chat",
+  });
+  if (systemPrompt.type !== "chat") {
+    throw new Error("System prompt is not a chat prompt");
+  }
+  let telemetry: any = null;
+  if (process.env.OTEL_EXPORTER_OTLP_ENABLED === "true") {
+    telemetry = {
+      serviceName: "ai",
+      enabled: true,
+      export: {
+        type: "otlp",
+      },
+    };
+  } else {
+    telemetry = {
+      serviceName: "ai",
+      export: {
+        type: "custom",
+        exporter: langfuseExporter,
+      },
+    };
+  }
+  const systemPromptText = systemPrompt
+    .compile()
+    .find((p) => p.role === "system")?.content;
+  if (!systemPromptText) {
+    throw new Error("Could not find system prompt");
+  }
+
+  mastra = new Mastra({
+    logger: createLogger({
+      name: "Mastra",
+      level: (process.env.MASTRA_LOG_LEVEL as LogLevel) || "info",
     }),
-  },
-  telemetry: {
-    serviceName: "ai",
-    export: {
-      type: "custom",
-      exporter: langfuseExporter,
+    agents: {
+      cannon: new Agent({
+        //memory,
+        name: "Cannon",
+        instructions: systemPromptText,
+        //model: openai("gpt-4o"),
+        model: google("gemini-2.0-flash-001"),
+      }),
     },
-  },
+    telemetry,
+  });
+  resolve();
 });
 
 export const APIRoute = createAPIFileRoute("/api/chat")({
   POST: async ({ request, params }) => {
     try {
-      // Initialize system prompt if not already done
-      if (!systemPrompt) {
-        systemPrompt = await langfuse.getPrompt("system-prompt", undefined, {
-          label: "production",
-          type: "chat",
-        });
-        if (systemPrompt.type !== "chat") {
-          throw new Error("System prompt is not a chat prompt");
-        }
-      }
-      const systemPromptText = systemPrompt
-        .compile()
-        .find((p) => p.role === "system")?.content;
-      if (!systemPromptText) {
-        throw new Error("Could not find system prompt");
-      }
-      const systemPromptMessage: CoreSystemMessage = {
-        role: "system",
-        content: systemPromptText,
-      };
-
       const { userId: clerkUserId } = await getAuth(request);
       if (!clerkUserId) {
         return json({ error: "Unauthorized" }, { status: 401 });
       }
-      const [clerkUser, clerkRes] = await Promise.all([
-        clerk.users.getUser(clerkUserId),
-        clerk.users.getUserOauthAccessToken(clerkUserId, "google"),
+      const [clerkUser, { token: googleToken }] = await Promise.all([
+        cachedGetUser(clerkUserId),
+        cachedGoogleToken(clerkUserId),
       ]);
-      const googleToken = clerkRes.data[0].token;
 
-      const user = await getUser({ clerkUserId });
+      const user = await cachedGetUserFromDB({ clerkUserId });
       if (!user) {
         return json(
           { error: `User not found for Clerk ID ${clerkUserId}` },
@@ -147,7 +165,7 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
         id,
         messages,
         selectedChatModel,
-      }: { id: string; messages: Array<Message>; selectedChatModel: string } =
+      }: { id: string; messages: Array<UIMessage>; selectedChatModel: string } =
         await request.json();
 
       // for some reason user messages are losing content field, so fix that
@@ -164,14 +182,14 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
         return m;
       });
 
-      const coreMessages: CoreMessage[] = convertToCoreMessages(messages);
-      const userMessage: Message = getMostRecentUserMessage(messages);
+      let coreMessages: CoreMessage[] = convertToCoreMessages(messages);
+      coreMessages = getMostRecentNCoreUserMessages(coreMessages, 6);
+      const userMessage: UIMessage = getMostRecentUserMessage(messages);
+      //const coreUserMessage: CoreMessage =
+      //  getMostRecentCoreUserMessage(coreMessages);
 
-      const chat = await getChat({ chatId: id });
-      if (!chat) {
-        throw new Error(`Chat not found for id ${id}`);
-      }
-      await saveMessages({
+      // fire and forget this since it's not critical
+      saveMessages({
         messages: [
           {
             id: userMessage.id,
@@ -187,11 +205,28 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
       });
 
       //  Order of ops: instructions, ...context, ...memories, ...messages
-      const res = await mastra.getAgent("cannon").stream([], {
-        context: [systemPromptMessage, ...coreMessages],
+      await initPromise;
+      // when memory is enabled you only need to send the last coreUserMessage and the rest are recalled from memory according to the lastMessages setting
+      // const res = await mastra!.getAgent("cannon").stream([coreUserMessage], {
+      // when not using memory you need to pass all coreMessages via context
+      const res = await mastra!.getAgent("cannon").stream([], {
+        context: coreMessages,
         toolsets: { "this-name-doesnt-matter": tools },
-        resourceId: clerkUserId,
-        // threadId,
+        resourceId: user.id,
+        threadId: id,
+        // memoryOptions: {
+        //   lastMessages: 6,
+        //   semanticRecall: {
+        //     messageRange: 1,
+        //     topK: 3,
+        //   },
+        //   workingMemory: {
+        //     enabled: true,
+        //     template: `<preferred-name></preferred-name>
+        // <preferred-draft-tone></preferred-draft-tone>
+        // <preferred-draft-guidance></preferred-draft-guidance>`,
+        //   },
+        // },
         onFinish: async (result) => {
           try {
             const stepResult = JSON.parse(result) as StepResult<any>;
@@ -200,9 +235,12 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
               chatId: id,
               messages: response.messages,
             });
-            await saveMessages({
-              messages: toSave,
-            });
+            if (toSave.length > 0) {
+              // fire and forget this
+              saveMessages({
+                messages: toSave,
+              });
+            }
           } catch (error) {
             console.error("Error in onFinish:", error);
           }

@@ -20,7 +20,7 @@ for (const key of [
   "CLERK_SECRET_KEY",
   "TURBOPUFFER_API_KEY",
   "OPENAI_API_KEY",
-  "VOYAGEAI_API_KEY",
+  "VOYAGE_API_KEY",
 ]) {
   if (!process.env[key]) {
     console.error(`${key} environment variable is required`);
@@ -483,9 +483,54 @@ program
   });
 
 // Namespace management commands
-program
+const nsprogram = program
   .command("ns")
-  .description("Namespace management commands")
+  .description("Namespace management commands");
+nsprogram
+  .command("list")
+  .description("List all Turbopuffer namespaces")
+  .option(
+    "-p, --prefix <prefix>",
+    "Filter namespaces by prefix (e.g. 'email-')",
+    ""
+  )
+  .action(async (options) => {
+    try {
+      const { prefix } = options;
+      console.log(
+        `Listing all Turbopuffer namespaces${
+          prefix ? ` with prefix '${prefix}'` : ""
+        }...`
+      );
+
+      const params: { prefix?: string } = {};
+      if (prefix) {
+        params.prefix = prefix;
+      }
+
+      const result = await tpuf.namespaces(params);
+      // Ensure we have a valid result
+      const namespaces = result.namespaces || [];
+
+      if (namespaces.length === 0) {
+        console.log("No namespaces found.");
+        return;
+      }
+
+      console.log(`Found ${namespaces.length} namespaces:`);
+      console.log("=".repeat(80));
+
+      for (const namespace of namespaces) {
+        console.log(`Namespace: ${namespace.id}`);
+        console.log("-".repeat(80));
+      }
+    } catch (error) {
+      console.error("Error listing namespaces:", error);
+      process.exit(1);
+    }
+  });
+
+nsprogram
   .command("delete")
   .description("Delete a Turbopuffer namespace")
   .argument("<namespace>", "Name of the namespace to delete")
@@ -563,7 +608,7 @@ function embeddings(model: string): OpenAIEmbeddings | VoyageEmbeddings {
       break;
     case "voyage":
       embedder = new VoyageEmbeddings({
-        apiKey: process.env.VOYAGEAI_API_KEY,
+        apiKey: process.env.VOYAGE_API_KEY,
         modelName,
       });
       break;

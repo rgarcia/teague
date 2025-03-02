@@ -1,4 +1,5 @@
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { Resource } from "@opentelemetry/resources";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
@@ -16,9 +17,18 @@ const lfConfig = {
 export const langfuse = new Langfuse(lfConfig);
 export const langfuseExporter = new LangfuseExporter(lfConfig);
 
+let traceExporter: OTLPTraceExporter | LangfuseExporter;
+if (process.env.OTEL_EXPORTER_OTLP_ENABLED === "true") {
+  traceExporter = new OTLPTraceExporter({
+    url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+  });
+} else {
+  traceExporter = langfuseExporter;
+}
+
 // Set up OpenTelemetry with Langfuse exporter
 const sdk = new NodeSDK({
-  traceExporter: langfuseExporter,
+  traceExporter,
   instrumentations: [getNodeAutoInstrumentations()],
   resource: new Resource({
     [ATTR_SERVICE_NAME]: "teague",
