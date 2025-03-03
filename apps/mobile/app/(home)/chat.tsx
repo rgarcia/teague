@@ -395,7 +395,7 @@ export default function Page() {
       case CALL_STATUS.ACTIVE:
         return "Stop Conversation";
       case CALL_STATUS.LOADING:
-        return "Loading...";
+        return "Start Conversation";
       case CALL_STATUS.INACTIVE:
       default:
         return "Start Conversation";
@@ -591,7 +591,7 @@ const createThemedStyles = (theme: "light" | "dark") =>
       flexDirection: "row",
       paddingHorizontal: 16,
       paddingTop: 16,
-      paddingBottom: Platform.OS === "ios" ? 54 : 24,
+      paddingBottom: Platform.OS === "ios" ? 16 : 16,
     },
     input: {
       minHeight: 48,
@@ -606,7 +606,7 @@ const createThemedStyles = (theme: "light" | "dark") =>
       color: Colors[theme].text,
     },
     sendButton: {
-      backgroundColor: Colors[theme].tint,
+      backgroundColor: Colors[theme].buttonPrimary,
       width: 72,
       height: 48,
       borderRadius: 16,
@@ -618,7 +618,7 @@ const createThemedStyles = (theme: "light" | "dark") =>
       fontSize: 20,
     },
     button: {
-      backgroundColor: Colors[theme].buttonSecondary,
+      backgroundColor: Colors[theme].buttonPrimary,
       paddingHorizontal: 20,
       paddingVertical: 10,
       borderRadius: 8,
@@ -626,7 +626,7 @@ const createThemedStyles = (theme: "light" | "dark") =>
       borderColor: Colors[theme].border,
     },
     buttonPressed: {
-      backgroundColor: Colors[theme].buttonSecondaryPressed,
+      backgroundColor: Colors[theme].buttonPrimaryPressed,
     },
     buttonDisabled: {
       opacity: 0.5,
@@ -635,7 +635,7 @@ const createThemedStyles = (theme: "light" | "dark") =>
       backgroundColor: Colors[theme].buttonSecondary,
     },
     buttonText: {
-      color: Colors[theme].buttonText,
+      color: Colors[theme].buttonPrimaryText,
       fontSize: 16,
       fontWeight: "500",
     },
@@ -686,7 +686,7 @@ const createThemedStyles = (theme: "light" | "dark") =>
       gap: 8,
     },
     muteButton: {
-      backgroundColor: Colors[theme].surfaceSubtle,
+      backgroundColor: Colors[theme].buttonSecondary,
       paddingHorizontal: 12,
       paddingVertical: 10,
       borderRadius: 8,
@@ -698,6 +698,7 @@ const createThemedStyles = (theme: "light" | "dark") =>
     },
     muteButtonText: {
       fontSize: 16,
+      color: Colors[theme].buttonSecondaryText,
     },
   });
 

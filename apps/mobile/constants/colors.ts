@@ -25,7 +25,7 @@ const colorMidnight = "hsl(214, 58.3%, 9.4%)";
 const colorEvenfall = "hsl(214, 16.1%, 28%)";
 const colorBreeze = "hsl(214, 48.9%, 73.9%)";
 const colorCobalt = "hsl(214.6, 60%, 45%)";
-const colorGale = "hsl(214.6, 79.1%, 62.5%)";
+export const colorGale = "hsl(214.6, 79.1%, 62.5%)";
 const colorDawn = "hsl(37, 100%, 76%)";
 const colorSunset = "hsl(22, 100%, 51.6%)";
 const colorRust = "hsl(22, 93.8%, 36.72%)";
@@ -64,7 +64,7 @@ export const Colors = {
     buttonPrimary: colorJet,
     buttonPrimaryPressed: hsla(colorJet, "0.7"),
     buttonPrimaryText: colorIvory,
-    buttonSecondary: colorIvory,
+    buttonSecondary: colorDove,
     buttonSecondaryPressed: hsla(colorDove, "0.80"),
     buttonSecondaryText: colorJet,
     link: "#11181C",
