@@ -152,7 +152,9 @@ const createThemedStyles = (theme: "light" | "dark") =>
       borderRadius: 8,
       marginBottom: 12,
       backgroundColor:
-        theme === "dark" ? Colors.dark.background : Colors.light.background,
+        theme === "dark"
+          ? Colors.dark.buttonBackground
+          : Colors.light.buttonBackground,
       borderWidth: 1,
       borderColor: theme === "dark" ? Colors.dark.border : Colors.light.border,
     },
