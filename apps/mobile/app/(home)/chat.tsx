@@ -90,7 +90,10 @@ const condenseMessages = (
   let currentBotMessage: CondensedMessage | null = null;
   const toolCalls: Record<string, CondensedMessage> = {};
 
-  for (const message of messages) {
+  let seenUserMessage = false;
+  let seenBotMessage = false;
+  for (let i = 0; i < messages.length; i++) {
+    const message = messages[i];
     if ("role" in message) {
       switch (message.role) {
         case "system":
@@ -103,6 +106,11 @@ const condenseMessages = (
             condensed.push(currentBotMessage);
             currentBotMessage = null;
           }
+          // ignore the first user message that happens before a bot message, it's synthetic
+          if (!seenUserMessage && !seenBotMessage) {
+            seenUserMessage = true;
+            continue;
+          }
           if ("message" in message) {
             condensed.push({
               type: "user",
@@ -113,6 +121,7 @@ const condenseMessages = (
           break;
 
         case "bot":
+          seenBotMessage = true;
           if ("message" in message) {
             if (!currentBotMessage) {
               currentBotMessage = {
@@ -395,7 +404,7 @@ export default function Page() {
       case CALL_STATUS.ACTIVE:
         return "Stop Conversation";
       case CALL_STATUS.LOADING:
-        return "Loading...";
+        return "Start Conversation";
       case CALL_STATUS.INACTIVE:
       default:
         return "Start Conversation";
@@ -591,20 +600,22 @@ const createThemedStyles = (theme: "light" | "dark") =>
       flexDirection: "row",
       paddingHorizontal: 16,
       paddingTop: 16,
-      paddingBottom: Platform.OS === "ios" ? 54 : 24,
+      paddingBottom: Platform.OS === "ios" ? 16 : 16,
     },
     input: {
       minHeight: 48,
       flex: 1,
-      backgroundColor: Colors[theme].surfaceSubtle,
+      backgroundColor: Colors[theme].inputBackground,
       borderRadius: 16,
+      borderWidth: 1,
+      borderColor: Colors[theme].inputBorder,
       paddingHorizontal: 16,
       paddingVertical: 8,
       marginRight: 8,
       color: Colors[theme].text,
     },
     sendButton: {
-      backgroundColor: Colors[theme].tint,
+      backgroundColor: Colors[theme].buttonPrimary,
       width: 72,
       height: 48,
       borderRadius: 16,
@@ -616,22 +627,24 @@ const createThemedStyles = (theme: "light" | "dark") =>
       fontSize: 20,
     },
     button: {
-      backgroundColor: Colors[theme].tint,
+      backgroundColor: Colors[theme].buttonPrimary,
       paddingHorizontal: 20,
       paddingVertical: 10,
       borderRadius: 8,
+      borderWidth: 1,
+      borderColor: Colors[theme].border,
     },
     buttonPressed: {
-      opacity: 0.7,
+      backgroundColor: Colors[theme].buttonPrimaryPressed,
     },
     buttonDisabled: {
       opacity: 0.5,
     },
     buttonActive: {
-      backgroundColor: Colors[theme].danger,
+      backgroundColor: Colors[theme].buttonSecondary,
     },
     buttonText: {
-      color: Colors[theme].background,
+      color: Colors[theme].buttonPrimaryText,
       fontSize: 16,
       fontWeight: "500",
     },
@@ -682,7 +695,7 @@ const createThemedStyles = (theme: "light" | "dark") =>
       gap: 8,
     },
     muteButton: {
-      backgroundColor: Colors[theme].surfaceSubtle,
+      backgroundColor: Colors[theme].buttonSecondary,
       paddingHorizontal: 12,
       paddingVertical: 10,
       borderRadius: 8,
@@ -694,6 +707,7 @@ const createThemedStyles = (theme: "light" | "dark") =>
     },
     muteButtonText: {
       fontSize: 16,
+      color: Colors[theme].buttonSecondaryText,
     },
   });
 
