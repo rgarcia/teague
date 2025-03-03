@@ -158,7 +158,7 @@ export default function Page() {
   return (
     <View style={themedStyles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-      <Text style={themedStyles.title}>Sign in to Blitz</Text>
+      <Text style={themedStyles.title}>Welcome to Blitz</Text>
       {/* <Text style={themedStyles.subtitle}>
         Welcome back! Please sign in to continue
       </Text> */}

@@ -1,4 +1,8 @@
 import { VapiClient } from "@vapi-ai/server-sdk";
+import {
+  DeepgramTranscriberModel,
+  UpdateAssistantDto,
+} from "@vapi-ai/server-sdk/api";
 import { mkdirSync, writeFileSync } from "fs";
 import { Langfuse } from "langfuse";
 import path from "path";
@@ -45,7 +49,8 @@ const WEB_BASE_URL = "https://prod--web.raf.xyz";
 async function dumpState(timestamp: string, prefix: string) {
   const tools = await client.tools.list();
   const assistants = await client.assistants.list();
-  const teague = assistants.find((assistant) => assistant.name === "Teague");
+  const blitz =
+    assistants.find((assistant) => assistant.name === "Blitz") || "";
 
   // Create dumps directory if it doesn't exist
   const dumpsDir = path.join("scripts", "dumps", timestamp);
@@ -60,7 +65,7 @@ async function dumpState(timestamp: string, prefix: string) {
   // Dump assistant
   writeFileSync(
     path.join(dumpsDir, `${prefix}-assistant.json`),
-    JSON.stringify(teague, null, 2)
+    JSON.stringify(blitz, null, 2)
   );
 }
 
@@ -71,23 +76,22 @@ async function updateAssistant(toolIds: string[]) {
     assistants.map((a) => ({ id: a.id, name: a.name }))
   );
 
-  const teague = assistants.find((assistant) => assistant.name === "Teague");
-  if (!teague) {
-    throw new Error("Teague assistant not found");
-  }
-
-  const updateRes = await client.assistants.update(teague.id, {
+  const assistantSpec = {
     model: {
       // provider: "openai",
       // model: "gpt-4o",
-      provider: "google",
+      provider: "google" as const,
       // @ts-ignore
       model: "gemini-2.0-flash",
       temperature: 0.7,
       messages: [
         {
-          role: "system",
+          role: "system" as const,
           content: systemPrompt,
+        },
+        {
+          role: "user" as const,
+          content: "Let's go through my inbox.",
         },
       ],
       toolIds: toolIds,
@@ -98,27 +102,29 @@ async function updateAssistant(toolIds: string[]) {
     },
     backgroundSound: "off",
     stopSpeakingPlan: {
-      numWords: 3,
+      numWords: 1,
+      voiceSeconds: 0.2,
+      backoffSeconds: 1,
     },
     modelOutputInMessagesEnabled: true,
     backgroundDenoisingEnabled: true,
-    //firstMessageMode: "assistant-speaks-first-with-model-generated-message",
-    firstMessage: "Let's go through  your inbox.",
-    voicemailMessage: "Hey this is Ava, can you call me back when you're free?",
+    firstMessageMode: "assistant-speaks-first-with-model-generated-message",
+    //firstMessage: "Let's go through your inbox.",
+    voicemailMessage:
+      "Hey this is Blitz, can you call me back when you're free?",
     endCallMessage: "I think that's all for now, good bye!",
     transcriber: {
-      keywords: ["inbox", "email", "cannon"],
-      provider: "deepgram",
-      language: "en-US",
-      model: "nova-2-general",
-      smartFormat: true,
+      keywords: ["inbox", "email", "blitz"],
+      provider: "deepgram" as const,
+      language: "en-US" as const,
+      model: "nova-3-general" as DeepgramTranscriberModel,
+      smartFormat: false,
     },
     clientMessages: [
       "conversation-update",
       "function-call",
       "function-call-result",
       "hang",
-      "language-changed",
       "metadata",
       "model-output",
       "speech-update",
@@ -142,14 +148,31 @@ async function updateAssistant(toolIds: string[]) {
       "user-interrupted",
     ],
     endCallPhrases: ["goodbye"],
-  });
+    silenceTimeoutSeconds: 60,
+  } as UpdateAssistantDto;
 
-  console.log("Updated Teague assistant:", {
-    id: updateRes.id,
-    name: updateRes.name,
-    model: updateRes.model!.model,
-    toolIds: updateRes.model!.toolIds,
-  });
+  const blitz = assistants.find((assistant) => assistant.name === "Blitz");
+  if (!blitz) {
+    const created = await client.assistants.create({
+      name: "Blitz",
+      ...assistantSpec,
+    });
+    console.log("Created Blitz assistant:", {
+      id: created.id,
+      name: created.name,
+      model: created.model!.model,
+      toolIds: created.model!.toolIds,
+    });
+  } else {
+    const updateRes = await client.assistants.update(blitz.id, assistantSpec);
+
+    console.log("Updated Blitz assistant:", {
+      id: updateRes.id,
+      name: updateRes.name,
+      model: updateRes.model!.model,
+      toolIds: updateRes.model!.toolIds,
+    });
+  }
 }
 
 async function updateTools(): Promise<string[]> {
