@@ -90,7 +90,10 @@ const condenseMessages = (
   let currentBotMessage: CondensedMessage | null = null;
   const toolCalls: Record<string, CondensedMessage> = {};
 
-  for (const message of messages) {
+  let seenUserMessage = false;
+  let seenBotMessage = false;
+  for (let i = 0; i < messages.length; i++) {
+    const message = messages[i];
     if ("role" in message) {
       switch (message.role) {
         case "system":
@@ -103,6 +106,11 @@ const condenseMessages = (
             condensed.push(currentBotMessage);
             currentBotMessage = null;
           }
+          // ignore the first user message that happens before a bot message, it's synthetic
+          if (!seenUserMessage && !seenBotMessage) {
+            seenUserMessage = true;
+            continue;
+          }
           if ("message" in message) {
             condensed.push({
               type: "user",
@@ -113,6 +121,7 @@ const condenseMessages = (
           break;
 
         case "bot":
+          seenBotMessage = true;
           if ("message" in message) {
             if (!currentBotMessage) {
               currentBotMessage = {
