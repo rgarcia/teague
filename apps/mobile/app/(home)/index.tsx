@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   useColorScheme,
 } from "react-native";
-import { Link } from "expo-router";
+import { Link, Redirect } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
 import { SignOutButton } from "@/components/SignOutButton";
 import { Colors } from "@/constants/colors";
@@ -17,10 +17,14 @@ export default function Page() {
   const colorScheme = useColorScheme() ?? "light";
   const themedStyles = styles[colorScheme];
 
+  if (!isSignedIn) {
+    return <Redirect href="/sign-in" />;
+  }
+
   return (
     <SafeAreaView style={themedStyles.container} edges={["top"]}>
       <View style={themedStyles.content}>
-        <Text style={themedStyles.title}>Cannon</Text>
+        <Text style={themedStyles.title}>Blitz</Text>
         <Text style={themedStyles.subtitle}>
           Wanna blast through your inbox today?
         </Text>

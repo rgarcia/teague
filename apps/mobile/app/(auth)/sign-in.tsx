@@ -14,7 +14,7 @@ import {
   EmailCodeFactor,
   SignInFirstFactor,
 } from "@clerk/types";
-import { Link, useRouter } from "expo-router";
+import { Link, useRouter, Stack } from "expo-router";
 import OAuthButtons from "@/components/OAuthButtons";
 import { OtpInput } from "react-native-otp-entry";
 import { Colors } from "@/constants/colors";
@@ -111,6 +111,7 @@ export default function Page() {
   if (showOTPForm) {
     return (
       <View style={themedStyles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
         <Text style={themedStyles.title}>Check your email</Text>
         <Text style={themedStyles.subtitle}>to continue to your app</Text>
 
@@ -156,14 +157,15 @@ export default function Page() {
 
   return (
     <View style={themedStyles.container}>
-      <Text style={themedStyles.title}>Sign in to Your App</Text>
-      <Text style={themedStyles.subtitle}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <Text style={themedStyles.title}>Sign in to Blitz</Text>
+      {/* <Text style={themedStyles.subtitle}>
         Welcome back! Please sign in to continue
-      </Text>
+      </Text> */}
 
       <OAuthButtons />
 
-      <Text style={themedStyles.orSeparator}>or</Text>
+      {/* <Text style={themedStyles.orSeparator}>or</Text>
 
       <Text style={themedStyles.label}>Email address</Text>
       <TextInput
@@ -195,7 +197,7 @@ export default function Page() {
         ) : (
           <Text style={themedStyles.continueButtonText}>Continue ▸</Text>
         )}
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       <View style={themedStyles.footerTextContainer}>
         <Text style={themedStyles.footerText}>
@@ -213,7 +215,8 @@ const createThemedStyles = (theme: "light" | "dark") =>
   StyleSheet.create({
     container: {
       flex: 1,
-      padding: 20,
+      justifyContent: "center",
+      padding: 16,
       width: "100%",
       alignSelf: "center",
       backgroundColor: Colors[theme].background,
@@ -222,14 +225,14 @@ const createThemedStyles = (theme: "light" | "dark") =>
       fontSize: 24,
       fontWeight: "bold",
       textAlign: "center",
-      marginBottom: 10,
+      marginBottom: 24,
       color: Colors[theme].text,
     },
     subtitle: {
       fontSize: 16,
       color: Colors[theme].secondaryText,
       textAlign: "center",
-      marginBottom: 20,
+      marginBottom: 24,
     },
     orSeparator: {
       textAlign: "center",
@@ -275,7 +278,7 @@ const createThemedStyles = (theme: "light" | "dark") =>
       marginTop: 15,
     },
     footerTextContainer: {
-      marginTop: 20,
+      marginTop: 16,
       alignItems: "center",
     },
     footerText: {
@@ -287,7 +290,6 @@ const createThemedStyles = (theme: "light" | "dark") =>
       fontWeight: "bold",
     },
   });
-
 const styles = {
   light: createThemedStyles("light"),
   dark: createThemedStyles("dark"),
