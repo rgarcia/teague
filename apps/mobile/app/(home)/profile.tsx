@@ -142,14 +142,14 @@ const createThemedStyles = (theme: "light" | "dark") =>
       color: Colors[theme].secondaryText,
     },
     signOutButton: {
-      backgroundColor: Colors[theme].primaryButton,
+      backgroundColor: Colors[theme].buttonPrimary,
       padding: 15,
       borderRadius: 8,
       margin: 20,
       alignItems: "center",
     },
     signOutButtonText: {
-      color: Colors[theme].primaryButtonText,
+      color: Colors[theme].buttonPrimaryText,
       fontSize: 16,
       fontWeight: "bold",
     },

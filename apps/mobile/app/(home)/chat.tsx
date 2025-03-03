@@ -596,8 +596,10 @@ const createThemedStyles = (theme: "light" | "dark") =>
     input: {
       minHeight: 48,
       flex: 1,
-      backgroundColor: Colors[theme].surfaceSubtle,
+      backgroundColor: Colors[theme].inputBackground,
       borderRadius: 16,
+      borderWidth: 1,
+      borderColor: Colors[theme].inputBorder,
       paddingHorizontal: 16,
       paddingVertical: 8,
       marginRight: 8,
@@ -616,22 +618,24 @@ const createThemedStyles = (theme: "light" | "dark") =>
       fontSize: 20,
     },
     button: {
-      backgroundColor: Colors[theme].tint,
+      backgroundColor: Colors[theme].buttonSecondary,
       paddingHorizontal: 20,
       paddingVertical: 10,
       borderRadius: 8,
+      borderWidth: 1,
+      borderColor: Colors[theme].border,
     },
     buttonPressed: {
-      opacity: 0.7,
+      backgroundColor: Colors[theme].buttonSecondaryPressed,
     },
     buttonDisabled: {
       opacity: 0.5,
     },
     buttonActive: {
-      backgroundColor: Colors[theme].danger,
+      backgroundColor: Colors[theme].buttonSecondary,
     },
     buttonText: {
-      color: Colors[theme].background,
+      color: Colors[theme].buttonText,
       fontSize: 16,
       fontWeight: "500",
     },

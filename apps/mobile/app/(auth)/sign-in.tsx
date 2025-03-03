@@ -139,7 +139,7 @@ export default function Page() {
           onPress={handleVerification}
         >
           {loading ? (
-            <ActivityIndicator color={Colors[colorScheme].primaryButtonText} />
+            <ActivityIndicator color={Colors[colorScheme].buttonPrimaryText} />
           ) : (
             <Text style={themedStyles.continueButtonText}>Continue ▸</Text>
           )}
@@ -193,7 +193,7 @@ export default function Page() {
         onPress={handleEmailSignIn}
       >
         {loading ? (
-          <ActivityIndicator color={Colors[colorScheme].primaryButtonText} />
+          <ActivityIndicator color={Colors[colorScheme].buttonPrimaryText} />
         ) : (
           <Text style={themedStyles.continueButtonText}>Continue ▸</Text>
         )}
@@ -263,13 +263,13 @@ const createThemedStyles = (theme: "light" | "dark") =>
       marginBottom: 5,
     },
     continueButton: {
-      backgroundColor: Colors[theme].primaryButton,
+      backgroundColor: Colors[theme].buttonPrimary,
       padding: 12,
       borderRadius: 8,
       alignItems: "center",
     },
     continueButtonText: {
-      color: Colors[theme].primaryButtonText,
+      color: Colors[theme].buttonPrimaryText,
       fontSize: 16,
       fontWeight: "bold",
     },
