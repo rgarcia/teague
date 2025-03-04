@@ -5,6 +5,7 @@ apps/web/scripts/*.db
 apps/web/scripts/system-prompt.md
 apps/web/scripts/dumps/
 packages/db/.env.prod
+apps/web/scripts/demo-data/
 
 # my todos
 TODO

@@ -31,7 +31,7 @@ export async function fetchEmails(
     pageToken: input.nextPageToken,
   });
 
-  if (!listRes.data) {
+  if (!listRes.data || listRes.data.messages?.length === 0) {
     return {
       emails: [],
     };
@@ -369,7 +369,10 @@ async function formatEmailForEmbedding(
 
   const formattedHeaders = relevantHeaders
     .map((header) => {
-      const value = headerMap.get(header);
+      let value = headerMap.get(header);
+      if (header === "from" && headerMap.get("x-google-original-from")) {
+        value = headerMap.get("x-google-original-from");
+      }
       return value
         ? `${header.charAt(0).toUpperCase() + header.slice(1)}: ${value}`
         : null;
@@ -474,7 +477,10 @@ export async function parseGmailEmail(
 
   const subject = headerMap.get("subject") || "(no subject)";
   const to = headerMap.get("to") || "";
-  const from = headerMap.get("from") || "";
+  // for testing purposes we sometimes spoof the from address.
+  // Google's SMTP server will move this into a x-google-original-from header and use the authenticated sender as the true "from" header
+  const from =
+    headerMap.get("x-google-original-from") || headerMap.get("from") || "";
   const sent = from.includes(userEmail);
   // Resolve label names
   const labels = await Promise.all(
@@ -579,12 +585,12 @@ export async function unsubscribeEmail(
     throw new Error("Cannot unsubscribe: missing required headers");
   }
 
-  // Extract HTTPS URL from List-Unsubscribe header
+  // Extract HTTP or HTTPS URL from List-Unsubscribe header
   // Format is typically: <https://example.com/unsubscribe>, <mailto:...>
-  const matches = listUnsubscribe.match(/<(https:\/\/[^>]+)>/);
+  const matches = listUnsubscribe.match(/<(https?:\/\/[^>]+)>/);
   if (!matches) {
     throw new Error(
-      "Cannot unsubscribe: no HTTPS URL found in List-Unsubscribe header"
+      "Cannot unsubscribe: no HTTP/HTTPS URL found in List-Unsubscribe header"
     );
   }
 
@@ -611,49 +617,189 @@ export type FormatDraftReplyInput = {
   userEmail: string;
 };
 
+/**
+ * Creates a Gmail-style attribution line with quoted content for email replies
+ */
+export type CreateReplyAttributionInput = {
+  originalMessage: gmail_v1.Schema$Message;
+};
+
+/**
+ * Extracts only the plain text content from an email message
+ * This function specifically looks for text/plain parts in the message
+ */
+export async function extractPlainTextContent(
+  message: gmail_v1.Schema$Message
+): Promise<string> {
+  if (!message.payload) {
+    return "";
+  }
+
+  // Function to find and decode text/plain parts
+  const findPlainTextParts = (part: gmail_v1.Schema$MessagePart): string[] => {
+    const results: string[] = [];
+
+    // Check if this part is text/plain
+    if (part.mimeType === "text/plain" && part.body?.data) {
+      const decodedText = Buffer.from(part.body.data, "base64").toString();
+      results.push(decodedText);
+    }
+
+    // Recursively check any child parts
+    if (part.parts) {
+      for (const childPart of part.parts) {
+        results.push(...findPlainTextParts(childPart));
+      }
+    }
+
+    return results;
+  };
+
+  // Get all plain text parts
+  let plainTextParts: string[] = [];
+
+  // Check if the message is directly text/plain
+  if (message.payload.mimeType === "text/plain" && message.payload.body?.data) {
+    plainTextParts.push(
+      Buffer.from(message.payload.body.data, "base64").toString()
+    );
+  }
+  // Otherwise look through all parts recursively
+  else if (message.payload.parts) {
+    for (const part of message.payload.parts) {
+      plainTextParts.push(...findPlainTextParts(part));
+    }
+  }
+
+  return plainTextParts.join("\n");
+}
+
+// Update the createReplyAttribution function to use the new plain text extractor
+export async function createReplyAttribution(
+  input: CreateReplyAttributionInput
+): Promise<string> {
+  const { originalMessage } = input;
+
+  // Extract headers
+  const headers = originalMessage.payload?.headers || [];
+  const getHeader = (name: string) =>
+    headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ||
+    "";
+
+  // Get sender information
+  const from = getHeader("from");
+
+  // Get date information and format it correctly
+  const dateHeader = getHeader("date");
+  const date = new Date(dateHeader);
+
+  // Format date in Gmail style: "On Day, Month Date, Year at Time"
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+
+  const dayName = days[date.getDay()];
+  const monthName = months[date.getMonth()];
+  const dayOfMonth = date.getDate();
+  const year = date.getFullYear();
+
+  // Format time (Gmail uses 12-hour format with AM/PM)
+  let hours = date.getHours();
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  hours = hours ? hours : 12; // Convert 0 to 12 for 12 AM
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  const formattedTime = `${hours}:${minutes}\u00A0${ampm}`; // Use Unicode non-breaking space
+
+  // Create attribution line in Gmail format
+  const attributionLine = `On ${dayName}, ${monthName} ${dayOfMonth}, ${year} at ${formattedTime} ${from} wrote:`;
+
+  // Extract plain text content from the original message
+  const textContent = await extractPlainTextContent(originalMessage);
+
+  // Format quoted text - each line prefixed with '>'
+  const quotedText = textContent
+    .split("\n")
+    .map((line) => `> ${line}`)
+    .join("\n");
+
+  return `${attributionLine}\n${quotedText}`;
+}
+
 export function formatDraftReply({
   originalMessage,
   body,
   userEmail,
 }: FormatDraftReplyInput): string {
-  if (!originalMessage.payload?.headers) {
-    throw new Error("Original message has no headers");
-  }
-
+  const headers = originalMessage.payload?.headers || [];
   const getHeader = (name: string) =>
-    originalMessage.payload?.headers?.find(
-      (h: gmail_v1.Schema$MessagePartHeader) =>
-        h.name?.toLowerCase() === name.toLowerCase()
-    )?.value || "";
+    headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ||
+    "";
 
-  let toArr: string[] = [getHeader("From")];
-  if (getHeader("To")) {
-    // split on comma and remove self
-    const tos = getHeader("To")
-      .split(",")
-      .map((t) => t.trim())
-      .filter((t) => !t.includes(userEmail));
-    toArr.push(...tos);
-  }
+  // Extract email addresses
+  const extractEmails = (headerValue: string): string[] => {
+    return headerValue
+      .split(/[,;]/)
+      .map((email) => email.trim())
+      .filter((email) => email.length > 0);
+  };
+
+  // Check for Reply-To header, fallback to From header
+  const replyTo = getHeader("reply-to");
+  const from = getHeader("from");
+  let toArr: string[] = [replyTo || from];
+
+  // Add everyone from the original To field except the current user
+  const originalTo = getHeader("to") || "";
+  extractEmails(originalTo)
+    .filter((email) => !email.includes(userEmail))
+    .forEach((email) => toArr.push(email));
+  toArr = [...new Set(toArr)]; // dedupe
+
+  // Build the CC field: include everyone from the original CC except the current user
+  const originalCc = getHeader("cc") || "";
+  let ccArr = extractEmails(originalCc).filter(
+    (email) => !email.includes(userEmail)
+  );
+  ccArr = [...new Set(ccArr)]; // dedupe
+
   const to = toArr.join(", ");
-  const cc = getHeader("Cc");
-  const subject = getHeader("Subject");
-  const replySubject = subject.startsWith("Re:") ? subject : `Re: ${subject}`;
-  const references = getHeader("References");
-  const inReplyTo = getHeader("In-Reply-To");
+  const cc = ccArr.length > 0 ? ccArr.join(", ") : "";
+  const subject = getHeader("subject") || "";
+  const formattedSubject = subject.startsWith("Re:")
+    ? subject
+    : `Re: ${subject}`;
 
-  const rawMessage = Buffer.from(
+  // Include references and in-reply-to headers for proper threading
+  // For proper threading, references should contain a list of message-IDs forming the reply chain.
+  const inReplyTo = getHeader("message-id");
+  const originalReferences = getHeader("references");
+  const references = originalReferences
+    ? `References: ${originalReferences}${inReplyTo ? " " + inReplyTo : ""}\r\n`
+    : originalReferences
+    ? `References: ${inReplyTo}\r\n`
+    : "";
+
+  // Format full RFC 2822 email
+  return (
     `To: ${to}\r\n` +
-      `${cc ? `Cc: ${cc}\r\n` : ""}` +
-      `Subject: ${replySubject}\r\n` +
-      `${inReplyTo ? `In-Reply-To: ${inReplyTo}\r\n` : ""}` +
-      `${references ? `References: ${references}\r\n` : ""}` +
-      `Content-Type: text/plain; charset="UTF-8"\r\n\r\n` +
-      body
-  )
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_");
-
-  return rawMessage;
+    (cc ? `Cc: ${cc}\r\n` : "") +
+    `Subject: ${formattedSubject}\r\n` +
+    (inReplyTo ? `In-Reply-To: ${inReplyTo}\r\n` : "") +
+    (references ? `References: ${references}\r\n` : "") +
+    `Content-Type: text/plain; charset=UTF-8\r\n\r\n` +
+    body
+  );
 }
