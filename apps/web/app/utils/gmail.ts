@@ -549,14 +549,21 @@ export async function createFilter(
       removeLabelIds: ["INBOX"],
     },
   };
+  try {
+    const res = await gmailClient.users.settings.filters.create({
+      userId: "me",
+      requestBody: filterConfig,
+    });
 
-  const res = await gmailClient.users.settings.filters.create({
-    userId: "me",
-    requestBody: filterConfig,
-  });
-
-  if (res.status !== 200) {
-    throw new Error(`Failed to create filter: ${res.statusText}`);
+    if (res.status !== 200) {
+      throw new Error(`Failed to create filter: ${res.statusText}`);
+    }
+  } catch (error) {
+    // if error contains "already exists" then we're good
+    if (error instanceof Error && error.message.includes("already exists")) {
+      return { success: true };
+    }
+    throw error;
   }
 
   return { success: true };
