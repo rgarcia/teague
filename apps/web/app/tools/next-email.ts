@@ -62,11 +62,15 @@ export const nextEmailSchema = z.object({
 });
 export type NextEmailInput = z.infer<typeof nextEmailSchema>;
 
-export type NextEmailOutput = {
-  id: string;
-  nextPageToken?: string;
-  content: string;
-};
+export type NextEmailOutput =
+  | {
+      id: string;
+      nextPageToken?: string;
+      content: string;
+    }
+  | {
+      done: true;
+    };
 
 export const nextEmailConfig: BaseToolConfig<
   typeof nextEmailSchema,
@@ -114,12 +118,12 @@ export const nextEmailConfig: BaseToolConfig<
         });
       }
 
-      if (!response || !response.emails) {
+      if (!response) {
         throw new Error(`unexpected response from fetchEmails: ${response}`);
       }
       const { emails, nextPageToken: nextPageTokenFromFetch } = response;
       if (emails.length === 0) {
-        throw new Error("No emails found matching the query");
+        return { done: true };
       }
 
       const email = emails[0];

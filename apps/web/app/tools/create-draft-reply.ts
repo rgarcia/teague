@@ -3,6 +3,7 @@ import { generateText, type CoreMessage } from "ai";
 import type { ChatPromptClient } from "langfuse";
 import { z } from "zod";
 import {
+  createReplyAttribution,
   formatDraftReply,
   gmailClientForToken,
   parseGmailEmail,
@@ -134,17 +135,38 @@ export const createDraftReplyConfig: BaseToolConfig<
         },
       });
       const body = result.text;
-      const rawMessage = formatDraftReply({
-        originalMessage: messageData.data,
-        body,
+
+      // Generate draft reply content with attribution line
+      const replyAttribution = await createReplyAttribution({
+        originalMessage: originalMessage,
+      });
+
+      // Append the attribution line after the AI-generated content
+      const fullReplyBody = `${body}\n\n${replyAttribution}`;
+
+      // Format the draft reply
+      const formattedReply = formatDraftReply({
+        originalMessage,
+        body: fullReplyBody,
         userEmail,
       });
+
+      // Create the draft in gmail
       const draft = await gmail.users.drafts.create({
         userId: "me",
         requestBody: {
-          message: { raw: rawMessage, threadId },
+          message: {
+            threadId,
+            raw: Buffer.from(formattedReply)
+              .toString("base64")
+              .replace(/\+/g, "-")
+              .replace(/\//g, "_"),
+          },
         },
       });
+
+      // to keep the return of the LLM tool concise, only include the text result from the llm (i.e. body)
+      // do not include the attribution + quote from the original message
       return {
         draftId: draft.data.id!,
         body,
