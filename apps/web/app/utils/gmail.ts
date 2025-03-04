@@ -348,7 +348,7 @@ async function getLabelName(
 async function formatEmailForEmbedding(
   headers: gmail_v1.Schema$MessagePartHeader[],
   content: string,
-  syntheticHeaders: Record<string, string | string[]>
+  syntheticHeaders: Record<string, string | string[] | undefined>
 ): Promise<string> {
   const headerMap = new Map(
     headers.map((h) => [h.name?.toLowerCase() || "", h.value || ""])
@@ -381,9 +381,11 @@ async function formatEmailForEmbedding(
 
   // Add synthetic headers
   for (const [key, value] of Object.entries(syntheticHeaders)) {
-    formattedHeaders.push(
-      `${key}: ${Array.isArray(value) ? `[${value.join(", ")}]` : value}`
-    );
+    if (value) {
+      formattedHeaders.push(
+        `${key}: ${Array.isArray(value) ? `[${value.join(", ")}]` : value}`
+      );
+    }
   }
 
   return `${formattedHeaders.join("\n")}\n\n${content}`;
@@ -487,12 +489,19 @@ export async function parseGmailEmail(
     email.labelIds?.map((label) => getLabelName(label, gmailClient)) || []
   );
 
+  // create a synthetic Google-Calendar-Event-ID by looking for URLs in the bodyWithoutThread of the form
+  // https://calendar.google.com/calendar/event?action=VIEW&eid=dGluNzMxbnNsM2M2cXY3bzk3dXQ0OGNqMWcgaGlAcmFmLnh5eg
+  const calendarEventId = bodyWithoutThread.match(
+    /https:\/\/calendar\.google\.com\/calendar\/event\?action=VIEW&eid=([^&\) ]+)/
+  )?.[1];
+
   const formattedEmail = await formatEmailForEmbedding(
     headers,
     bodyWithoutThread,
     {
       "Gmail-Message-ID": email.id!,
       "Gmail-Thread-ID": email.threadId!,
+      "Google-Calendar-Event-ID": calendarEventId,
       Labels: labels,
     }
   );

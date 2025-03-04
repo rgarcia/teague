@@ -36,8 +36,8 @@ export const acceptInviteConfig: BaseToolConfig<
     if (!context.googleToken) {
       throw new Error("Google token is required for this operation");
     }
-
-    await Promise.all([
+    // fire and forget for speed
+    Promise.all([
       archiveEmail({
         googleToken: context.googleToken,
         messageId,
@@ -47,7 +47,6 @@ export const acceptInviteConfig: BaseToolConfig<
         eventId,
       }),
     ]);
-
     return { success: true };
   },
   messages: [
