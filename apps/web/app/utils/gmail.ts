@@ -585,30 +585,55 @@ export async function unsubscribeEmail(
     throw new Error("Cannot unsubscribe: missing required headers");
   }
 
-  // Extract HTTP or HTTPS URL from List-Unsubscribe header
+  // Extract HTTPS URL from List-Unsubscribe header
   // Format is typically: <https://example.com/unsubscribe>, <mailto:...>
-  const matches = listUnsubscribe.match(/<(https?:\/\/[^>]+)>/);
+  const matches = listUnsubscribe.match(/<(https:\/\/[^>]+)>/);
   if (!matches) {
     throw new Error(
-      "Cannot unsubscribe: no HTTP/HTTPS URL found in List-Unsubscribe header"
+      "Cannot unsubscribe: no HTTPS URL found in List-Unsubscribe header"
     );
   }
 
   const unsubscribeUrl = matches[1];
 
-  const res = await fetch(unsubscribeUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: "List-Unsubscribe=One-Click",
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
 
-  if (!res.ok) {
-    throw new Error(`Failed to unsubscribe: ${res.statusText}`);
+  console.log(
+    `DEBUG: unsubscribing from ${message.data.id} by POSTing to ${unsubscribeUrl}`
+  );
+  try {
+    const res = await fetch(unsubscribeUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: "List-Unsubscribe=One-Click",
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      console.error(`Failed to unsubscribe: ${res.statusText}`);
+    }
+
+    return { success: true };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === "AbortError") {
+      console.error(
+        `Unsubscribe request to ${unsubscribeUrl} for message ${input.messageId} timed out after 3 seconds`
+      );
+    } else {
+      console.error(
+        `Error during unsubscribe: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+    return { success: false };
   }
-
-  return { success: true };
 }
 
 export type FormatDraftReplyInput = {

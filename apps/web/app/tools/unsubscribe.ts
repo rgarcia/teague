@@ -31,14 +31,19 @@ export const unsubscribeConfig: BaseToolConfig<
     if (!context.googleToken) {
       throw new Error("Google token is required for this operation");
     }
+    console.log("DEBUG: unsubscribing from", messageId, "first archiving");
+    // fire and forget both of these things for max speed
     archiveEmail({
       googleToken: context.googleToken,
       messageId,
     });
-    return await unsubscribeEmail({
+    console.log("DEBUG: unsubscribing from", messageId, "second unsubscribing");
+    unsubscribeEmail({
       googleToken: context.googleToken,
       messageId,
     });
+    console.log("DEBUG: returning success");
+    return { success: true };
   },
   messages: [
     {
