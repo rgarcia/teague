@@ -23,6 +23,7 @@
     "@expo/vector-icons": "^14.0.4",
     "@react-native-async-storage/async-storage": "^1.22.3",
     "@react-navigation/native": "^6.1.18",
+    "@sentry/react-native": "~6.9.0",
     "@vapi-ai/react-native": "^0.1.7",
     "@vapi-ai/server-sdk": "^0.4.0",
     "expo": "~51.0.38",
