@@ -262,7 +262,10 @@ const MessageItem = ({ message }: { message: CondensedMessage }) => {
           );
 
         case "GetNextEmail": {
-          if (!result.content) return <Text>No email found</Text>;
+          if (!result.content)
+            return (
+              <Text style={themedStyles.messageText}>No more emails!</Text>
+            );
           const from = (
             result.content
               .split("\n")
@@ -278,7 +281,7 @@ const MessageItem = ({ message }: { message: CondensedMessage }) => {
             .replace("Subject: ", "")
             .trim();
           return (
-            <View style={themedStyles.emailPreview}>
+            <View>
               <Text style={themedStyles.emailField}>
                 <Text style={themedStyles.emailLabel}>From: </Text>
                 {from}
@@ -292,19 +295,15 @@ const MessageItem = ({ message }: { message: CondensedMessage }) => {
         }
         case "CreateDraftReply":
           return (
-            <View style={themedStyles.emailPreview}>
-              <Text style={themedStyles.messageText}>
-                {result.body ? result.body : "⚠️ Failed to create draft"}
-              </Text>
-            </View>
+            <Text style={themedStyles.messageText}>
+              {result.body ? result.body : "⚠️ Failed to create draft"}
+            </Text>
           );
         case "UpdateDraftReply":
           return (
-            <View style={themedStyles.emailPreview}>
-              <Text style={themedStyles.messageText}>
-                {result.body ? result.body.trim() : "⚠️ Failed to update draft"}
-              </Text>
-            </View>
+            <Text style={themedStyles.messageText}>
+              {result.body ? result.body.trim() : "⚠️ Failed to update draft"}
+            </Text>
           );
         case "DeleteDraft":
           return (
@@ -344,7 +343,7 @@ const MessageItem = ({ message }: { message: CondensedMessage }) => {
             themedStyles.transcriptMessage,
           ]}
         >
-          <Text style={themedStyles.messageRole}>User</Text>
+          <Text style={themedStyles.messageRole}>You</Text>
           <Text style={themedStyles.messageText}>{message.messages[0]}</Text>
         </View>
       );
@@ -559,6 +558,12 @@ const createThemedStyles = (theme: "light" | "dark") =>
       borderBottomWidth: 1,
       borderBottomColor: Colors[theme].border,
       alignItems: "center",
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 1000,
+      backgroundColor: Colors[theme].backgroundTransparent,
     },
     scrollView: {
       flex: 1,
@@ -584,7 +589,6 @@ const createThemedStyles = (theme: "light" | "dark") =>
     functionResultMessage: {
       backgroundColor: Colors[theme].surfaceSuccess,
       borderColor: Colors[theme].borderSuccess,
-      padding: 16,
     },
     messageRole: {
       color: Colors[theme].icon,
@@ -660,11 +664,6 @@ const createThemedStyles = (theme: "light" | "dark") =>
     errorText: {
       color: Colors[theme].danger,
     },
-    emailPreview: {
-      padding: 8,
-      backgroundColor: Colors[theme].background,
-      borderRadius: 6,
-    },
     emailField: {
       color: Colors[theme].text,
       fontSize: 14,
@@ -677,7 +676,6 @@ const createThemedStyles = (theme: "light" | "dark") =>
     loadingContainer: {
       flexDirection: "row",
       alignItems: "center",
-      marginTop: 8,
       gap: 8,
     },
     loadingText: {

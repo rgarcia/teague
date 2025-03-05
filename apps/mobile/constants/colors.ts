@@ -44,6 +44,7 @@ export const Colors = {
   light: {
     text: colorJet,
     background: colorIvory,
+    backgroundTransparent: hsla(colorIvory, "0.85"),
     tint: tintColorLight,
     icon: "#687076",
     tabIconDefault: "#687076",
@@ -74,6 +75,7 @@ export const Colors = {
   dark: {
     text: colorIvory,
     background: "#1d1e20",
+    backgroundTransparent: hsla(colorJet, "0.8"),
     tint: tintColorDark,
     icon: "#9BA1A6",
     tabIconDefault: "#9BA1A6",
