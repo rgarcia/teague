@@ -17,7 +17,7 @@ import {
   KeyboardToolbar,
 } from "react-native-keyboard-controller";
 import { useVapi, CALL_STATUS } from "@/hooks/useVapi";
-import { Colors } from "@/constants/colors";
+import { colorGale, Colors, hsla } from "@/constants/colors";
 import { useRef, useState, useMemo } from "react";
 import { Vapi } from "@vapi-ai/server-sdk";
 import { useAuth } from "@clerk/clerk-expo";
@@ -337,12 +337,7 @@ const MessageItem = ({ message }: { message: CondensedMessage }) => {
   switch (message.type) {
     case "user":
       return (
-        <View
-          style={[
-            themedStyles.messageContainer,
-            themedStyles.transcriptMessage,
-          ]}
-        >
+        <View style={[themedStyles.messageContainer, themedStyles.userMessage]}>
           <Text style={themedStyles.messageRole}>You</Text>
           <Text style={themedStyles.messageText}>{message.messages[0]}</Text>
         </View>
@@ -351,10 +346,7 @@ const MessageItem = ({ message }: { message: CondensedMessage }) => {
     case "bot":
       return (
         <View
-          style={[
-            themedStyles.messageContainer,
-            themedStyles.transcriptMessage,
-          ]}
+          style={[themedStyles.messageContainer, themedStyles.assistantMessage]}
         >
           <Text style={themedStyles.messageRole}>Assistant</Text>
           <Text style={themedStyles.messageText}>
@@ -577,7 +569,11 @@ const createThemedStyles = (theme: "light" | "dark") =>
       borderRadius: 8,
       borderWidth: 1,
     },
-    transcriptMessage: {
+    assistantMessage: {
+      backgroundColor: Colors[theme].surfaceSubtle,
+      borderColor: hsla(colorGale, "0.5"),
+    },
+    userMessage: {
       backgroundColor: Colors[theme].surfaceSubtle,
       borderColor: Colors[theme].border,
     },

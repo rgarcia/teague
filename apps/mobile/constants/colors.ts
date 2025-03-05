@@ -32,7 +32,7 @@ const colorRust = "hsl(22, 93.8%, 36.72%)";
 const colorDusk = "hsl(263, 70%, 50.4%)";
 const colorTwilight = "hsl(255, 92%, 76%)";
 
-function hsla(hsl: string, a: string): string {
+export function hsla(hsl: string, a: string): string {
   // insert the percent before the )
   const hslArray = hsl.split(")");
   hslArray.splice(1, 0, `, ${a})`);
