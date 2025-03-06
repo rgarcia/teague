@@ -1007,7 +1007,7 @@ PODS:
     - React-debug
   - react-native-background-timer (2.4.1):
     - React-Core
-  - react-native-daily-js (0.59.0):
+  - react-native-daily-js (0.64.0):
     - React-Core
     - ReactNativeDailyJSScreenShareExtension (= 0.0.1)
   - react-native-get-random-values (1.11.0):
@@ -1035,7 +1035,7 @@ PODS:
     - Yoga
   - react-native-safe-area-context (5.2.0):
     - React-Core
-  - react-native-webrtc (118.0.3-daily.1):
+  - react-native-webrtc (118.0.3-daily.2):
     - JitsiWebRTC (~> 118.0.0)
     - React-Core
   - React-nativeconfig (0.74.5)
@@ -1664,11 +1664,11 @@ SPEC CHECKSUMS:
   React-logger: 780b9ee9cec7d44eabc4093de90107c379078cb6
   React-Mapbuffer: f544f00b98dbdd8cbae96dd2bdb8b47f719976e0
   react-native-background-timer: 4638ae3bee00320753647900b21260b10587b6f7
-  react-native-daily-js: 44f2395dc3093651f992d9a7113af95ac1bfdb18
+  react-native-daily-js: b792e351311728e1f9d06e9cae41a47f2553a4cd
   react-native-get-random-values: d16467cf726c618e9c7a8c3c39c31faa2244bbba
   react-native-keyboard-controller: 23bb54027c31ff7fe9aa34ef4e91489f1dbddc38
   react-native-safe-area-context: 3e33e7c43c8b74dba436a5a32651cb8d7064c740
-  react-native-webrtc: e0a204fce1cdacce75d51e0bff93ec1709af3529
+  react-native-webrtc: ca5670b7097dab11917acffa8f1fee526d60a29f
   React-nativeconfig: ba9a2e54e2f0882cf7882698825052793ed4c851
   React-NativeModulesApple: 84aaad2b0e546d7b839837ca537f6e72804a4cad
   React-perflogger: ed4e0c65781521e0424f2e5e40b40cc7879d737e
