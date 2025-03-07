@@ -1,6 +1,6 @@
-import { Api } from "./vapiApi";
+import { Api } from "./api";
 
-export const apiClient = new Api({
+const api = new Api({
   baseUrl: "https://api.vapi.ai",
   baseApiParams: {
     secure: true,
@@ -15,3 +15,5 @@ export const apiClient = new Api({
     }
   },
 });
+
+export const apiClient = api;

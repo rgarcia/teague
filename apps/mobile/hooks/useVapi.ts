@@ -1,5 +1,5 @@
 import vapi from "@/lib/vapi.sdk";
-import { OverrideAssistantDTO } from "@vapi-ai/react-native/dist/api";
+import { CreateAssistantDTO } from "@/lib/vapi/api";
 import { Vapi } from "@vapi-ai/server-sdk";
 import {
   BotMessage,
@@ -7,6 +7,10 @@ import {
   UserMessage,
 } from "@vapi-ai/server-sdk/api";
 import { useEffect, useState } from "react";
+
+type OverrideAssistantDTO = CreateAssistantDTO & {
+  serverUrlSecret?: string;
+};
 
 type Message = Vapi.ClientMessageMessage;
 
@@ -24,8 +28,8 @@ export function useVapi() {
   const [conversation, setConversation] =
     useState<Vapi.ClientMessageConversationUpdate | null>(null);
 
-  const [activeTranscript, setActiveTranscript] =
-    useState<Vapi.ClientMessageTranscript | null>(null);
+  // const [activeTranscript, setActiveTranscript] =
+  //   useState<Vapi.ClientMessageTranscript | null>(null);
 
   useEffect(() => {
     const onCallStartHandler = () => {
@@ -44,12 +48,17 @@ export function useVapi() {
         message.type === "transcript" &&
         message.transcriptType === "partial"
       ) {
-        setActiveTranscript(message);
+        // setActiveTranscript(message);
       } else if (message.type === "conversation-update") {
+        console.log("DEBUG SETTING ACTIVE CONVERSATION");
         setConversation(message);
       } else {
-        setMessages((prev) => [...prev, message]);
-        setActiveTranscript(null);
+        setMessages((prev) => {
+          console.log("DEBUG SETTING ACTIVE MESSAGES", message);
+          return [...prev, message];
+        });
+        // setActiveTranscript(null);
+        console.log("DEBUG DONE");
       }
     };
 
@@ -118,7 +127,7 @@ export function useVapi() {
 
   return {
     callStatus,
-    activeTranscript,
+    // activeTranscript,
     messages,
     conversation,
     start,
@@ -174,15 +183,15 @@ function logMessage(message: Message) {
         console.log(out);
       }
       break;
-    case "transcript":
-      {
-        let out = `vapi message type=${message.type}`;
-        out += ` role=${message.role} transcript=${
-          message.transcript
-        } other=${objectKeys(message, ["role", "transcript"])}`;
-        console.log(out);
-      }
-      break;
+    // case "transcript":
+    //   {
+    //     let out = `vapi message type=${message.type}`;
+    //     out += ` role=${message.role} transcript=${
+    //       message.transcript
+    //     } other=${objectKeys(message, ["role", "transcript"])}`;
+    //     console.log(out);
+    //   }
+    //   break;
     case "speech-update":
       {
         let out = `vapi message type=${message.type}`;
@@ -202,10 +211,10 @@ function logMessage(message: Message) {
       }
       break;
     default:
-      console.log(
-        `[vapi] message type=${message.type}`,
-        JSON.stringify(message).slice(0, 40) + "..."
-      );
+    // console.log(
+    //   `[vapi] message type=${message.type}`,
+    //   JSON.stringify(message).slice(0, 40) + "..."
+    // );
   }
 }
 
