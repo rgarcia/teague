@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/start";
+import { createServerFn } from "@tanstack/react-start";
 import { Message as DBMessage, NewMessage, asc, db, eq, messages } from "db";
 type SaveMessagesInput = {
   messages: Array<NewMessage>;

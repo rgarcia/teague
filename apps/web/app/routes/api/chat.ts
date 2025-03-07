@@ -6,8 +6,8 @@ import { Agent } from "@mastra/core/agent";
 import { createLogger, LogLevel } from "@mastra/core/logger";
 // import { DefaultStorage, DefaultVectorDB } from "@mastra/core/storage";
 import { createTool } from "@mastra/core/tools";
-import { json } from "@tanstack/start";
-import { createAPIFileRoute } from "@tanstack/start/api";
+import { json } from "@tanstack/react-start";
+import { createAPIFileRoute } from "@tanstack/react-start/api";
 import { convertToCoreMessages, CoreMessage, StepResult, UIMessage } from "ai";
 import {
   getMostRecentNCoreUserMessages,

@@ -1,5 +1,5 @@
 import { myProvider } from "@/lib/ai/models";
-import { createServerFn } from "@tanstack/start";
+import { createServerFn } from "@tanstack/react-start";
 import { generateText, Message } from "ai";
 import { Chat, chats, db, desc, eq, messages, votes } from "db";
 

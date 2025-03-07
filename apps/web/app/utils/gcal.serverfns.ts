@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/start";
+import { createServerFn } from "@tanstack/react-start";
 import { acceptInvite, AcceptInviteInput, AcceptInviteOutput } from "./gcal";
 
 export const acceptInviteFn = createServerFn({ method: "POST" })

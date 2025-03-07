@@ -18,5 +18,10 @@
   "trustedDependencies": [
     "@clerk/shared",
     "@parcel/watcher"
-  ]
+  ],
+  "pnpm": {
+    "ignoredBuiltDependencies": [
+      "@clerk/shared"
+    ]
+  }
 }

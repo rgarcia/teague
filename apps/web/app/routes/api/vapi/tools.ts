@@ -1,5 +1,5 @@
-import { json } from "@tanstack/start";
-import { createAPIFileRoute } from "@tanstack/start/api";
+import { json } from "@tanstack/react-start";
+import { createAPIFileRoute } from "@tanstack/react-start/api";
 import type { Vapi } from "@vapi-ai/server-sdk";
 import { acceptInviteConfig } from "~/tools/accept-invite";
 import { archiveEmailConfig } from "~/tools/archive-email";
