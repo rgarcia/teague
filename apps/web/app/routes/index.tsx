@@ -6,16 +6,18 @@ import {
   SignedOut,
   UserButton,
 } from "@clerk/tanstack-start";
+import { useTheme } from "~/components/theme-provider";
+import { dark } from "@clerk/themes";
 
 export const Route = createFileRoute("/")({
   component: Home,
 });
 
 function Home() {
+  const theme = useTheme();
   return (
     <div className="p-2">
       <div className="p-2 flex gap-2 text-lg">
-        <h1>Blitz</h1>
         <Link
           to="/"
           activeProps={{
@@ -23,22 +25,29 @@ function Home() {
           }}
           activeOptions={{ exact: true }}
         >
-          Home
-        </Link>{" "}
-        <Link
-          to="/chat"
-          activeProps={{
-            className: "font-bold",
-          }}
-        >
-          Chat
+          <h1>Blitz</h1>
         </Link>
+        <SignedIn>
+          <Link
+            to="/chat"
+            activeProps={{
+              className: "font-bold",
+            }}
+          >
+            Chat
+          </Link>
+        </SignedIn>
         <div className="ml-auto">
           <SignedIn>
             <UserButton />
           </SignedIn>
           <SignedOut>
-            <SignInButton mode="modal" />
+            <SignInButton
+              mode="modal"
+              appearance={{
+                baseTheme: theme.resolved === "dark" ? dark : undefined,
+              }}
+            />
           </SignedOut>
         </div>
       </div>
