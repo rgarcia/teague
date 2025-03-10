@@ -1,0 +1,19 @@
+# riff on https://pnpm.io/docker#example-2-build-multiple-docker-images-in-a-monorepo
+FROM node:22-slim AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+
+FROM base AS build
+COPY . /usr/src/app
+WORKDIR /usr/src/app
+# see https://docs.railway.com/guides/dockerfiles#cache-mounts
+RUN --mount=type=cache,id=s/2464fafd-61e6-4bf3-afbb-21e0d81d3668-pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN pnpm run --filter=livekit -r build
+RUN pnpm deploy --filter=livekit --prod /prod/livekit
+
+FROM base AS livekit
+COPY --from=build /prod/livekit /prod/livekit
+COPY --from=build /usr/src/app/apps/livekit/dist /prod/livekit/dist
+WORKDIR /prod/livekit
+CMD [ "node", "dist/index.js", "dev"]
