@@ -221,6 +221,7 @@ export default $config({
         projectId: "882a6cf1-941e-4e94-a6b8-58cad52a1908",
         sourceRepo: "rgarcia/teague",
         sourceRepoBranch: "main",
+        rootDirectory: "apps/livekit",
         numReplicas: 1,
       },
       {
