@@ -214,9 +214,9 @@ export default $config({
       },
     ];
     const livekit = new railway.Service(
-      "livekit",
+      "livekit-worker",
       {
-        name: "livekit",
+        name: "livekit-worker",
         configPath: "infra/livekit/railway.json",
         projectId: "882a6cf1-941e-4e94-a6b8-58cad52a1908",
         sourceRepo: "rgarcia/teague",
@@ -228,7 +228,7 @@ export default $config({
       }
     );
     for (const v of livekitVars) {
-      envVars[v.name] = new railway.Variable(`livekit-${v.name}`, {
+      envVars[v.name] = new railway.Variable(`livekit-worker-${v.name}`, {
         name: v.name,
         value: v.value,
         environmentId,

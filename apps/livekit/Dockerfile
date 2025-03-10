@@ -8,7 +8,7 @@ FROM base AS build
 COPY . /usr/src/app
 WORKDIR /usr/src/app
 # see https://docs.railway.com/guides/dockerfiles#cache-mounts
-RUN --mount=type=cache,id=s/2464fafd-61e6-4bf3-afbb-21e0d81d3668-pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=s/acb5a0f2-baf8-401a-acf4-58d59d61256c-pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 RUN pnpm run --filter=livekit -r build
 RUN pnpm deploy --filter=livekit --prod /prod/livekit
 
