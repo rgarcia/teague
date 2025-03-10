@@ -19,6 +19,9 @@
     "@clerk/shared",
     "@parcel/watcher"
   ],
+  "resolutions": {
+    "onnxruntime-node": "1.20.0"
+  },
   "pnpm": {
     "ignoredBuiltDependencies": [
       "@clerk/shared"
