@@ -1,0 +1,23 @@
+{
+  "name": "livekit",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "start-dev": "dotenv -e .env -- node dist/index.js dev",
+    "start": "dotenv -e .env -- node dist/index.js start"
+  },
+  "dependencies": {
+    "@livekit/agents": "^0.7.0",
+    "@livekit/agents-plugin-deepgram": "^0.5.4",
+    "@livekit/agents-plugin-elevenlabs": "^0.6.1",
+    "@livekit/agents-plugin-livekit": "^0.1.0",
+    "@livekit/agents-plugin-openai": "^0.8.2",
+    "@livekit/agents-plugin-silero": "^0.5.4",
+    "zod": "^3.24.2"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

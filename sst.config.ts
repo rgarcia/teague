@@ -68,6 +68,17 @@ export default $config({
         username: new sst.Secret("PlanetScaleUsername"),
         password: new sst.Secret("PlanetScalePassword"),
       },
+      livekit: {
+        url: new sst.Secret("LiveKitUrl"),
+        apiKey: new sst.Secret("LiveKitApiKey"),
+        apiSecret: new sst.Secret("LiveKitApiSecret"),
+      },
+      elevenlabs: {
+        apiKey: new sst.Secret("ElevenLabsApiKey"),
+      },
+      deepgram: {
+        apiKey: new sst.Secret("DeepgramApiKey"),
+      },
     };
     const vars = [
       {
@@ -148,15 +159,20 @@ export default $config({
       },
     ];
 
-    const web = new railway.Service("web", {
-      name: "web",
-      configPath: "infra/web/railway.json",
-      projectId: "882a6cf1-941e-4e94-a6b8-58cad52a1908",
-      sourceRepo: "rgarcia/teague",
-      sourceRepoBranch: "main",
-      region: "us-west2",
-      numReplicas: 1,
-    });
+    const web = new railway.Service(
+      "web",
+      {
+        name: "web",
+        configPath: "infra/web/railway.json",
+        projectId: "882a6cf1-941e-4e94-a6b8-58cad52a1908",
+        sourceRepo: "rgarcia/teague",
+        sourceRepoBranch: "main",
+        numReplicas: 1,
+      },
+      {
+        ignoreChanges: ["region"],
+      }
+    );
     const environmentId =
       $app.stage === Stage.Prod
         ? "df9b8b1d-913b-401d-9dfc-fcac5038c728"
@@ -168,6 +184,55 @@ export default $config({
         value: v.value,
         environmentId,
         serviceId: web.id,
+      });
+    }
+
+    const livekitVars = [
+      {
+        name: "LIVEKIT_URL",
+        value: secrets.livekit.url.value,
+      },
+      {
+        name: "LIVEKIT_API_KEY",
+        value: secrets.livekit.apiKey.value,
+      },
+      {
+        name: "LIVEKIT_API_SECRET",
+        value: secrets.livekit.apiSecret.value,
+      },
+      {
+        name: "ELEVEN_API_KEY",
+        value: secrets.elevenlabs.apiKey.value,
+      },
+      {
+        name: "DEEPGRAM_API_KEY",
+        value: secrets.deepgram.apiKey.value,
+      },
+      {
+        name: "OPENAI_API_KEY",
+        value: secrets.openai.apiKey.value,
+      },
+    ];
+    const livekit = new railway.Service(
+      "livekit",
+      {
+        name: "livekit",
+        configPath: "infra/livekit/railway.json",
+        projectId: "882a6cf1-941e-4e94-a6b8-58cad52a1908",
+        sourceRepo: "rgarcia/teague",
+        sourceRepoBranch: "main",
+        numReplicas: 1,
+      },
+      {
+        ignoreChanges: ["region"],
+      }
+    );
+    for (const v of livekitVars) {
+      envVars[v.name] = new railway.Variable(`livekit-${v.name}`, {
+        name: v.name,
+        value: v.value,
+        environmentId,
+        serviceId: livekit.id,
       });
     }
 
