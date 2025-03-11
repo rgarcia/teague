@@ -1,56 +1,57 @@
 import { google } from "@ai-sdk/google";
 import { generateText, type CoreMessage } from "ai";
 import type { ChatPromptClient } from "langfuse";
+import { langfuse } from "langfuse-util";
 import { z } from "zod";
 import {
+  createReplyAttribution,
   formatDraftReply,
   gmailClientForToken,
   parseGmailEmail,
-} from "~/utils/gmail";
-import { langfuse } from "~/utils/langfuse";
-import type { BaseToolConfig } from "~/utils/tools/registry";
+} from "./gmail";
+import type { BaseToolConfig } from "./registry";
 
-const updateDraftReplySchema = z.object({
-  draftId: z.string().describe("The ID of the draft to update"),
-  messageId: z.string().describe("The ID of the message being replied to"),
-  updates: z.string().describe("Instructions for updating the draft"),
+const createDraftReplySchema = z.object({
+  messageId: z.string().describe("The ID of the message to reply to"),
+  guidance: z
+    .string()
+    .describe(
+      "Any guidance the user provided when directing you to create a draft reply"
+    ),
 });
 
-export type UpdateDraftReplyInput = z.infer<typeof updateDraftReplySchema>;
-export type UpdateDraftReplyOutput = {
+export type CreateDraftReplyInput = z.infer<typeof createDraftReplySchema>;
+export type CreateDraftReplyOutput = {
   draftId: string;
   body: string;
 };
 
-let updateDraftReplyPrompt: ChatPromptClient;
+let draftReplyPrompt: ChatPromptClient;
 
-export const updateDraftReplyConfig: BaseToolConfig<
-  typeof updateDraftReplySchema,
-  UpdateDraftReplyOutput
+export const createDraftReplyConfig: BaseToolConfig<
+  typeof createDraftReplySchema,
+  CreateDraftReplyOutput
 > = {
-  name: "UpdateDraftReply",
+  name: "CreateDraftReply",
   description:
-    "Update a draft reply using AI to modify the content based on instructions.",
-  parameters: updateDraftReplySchema,
+    "Create a draft reply to an email using AI to compose the response.",
+  parameters: createDraftReplySchema,
   vapiParameters: {
     type: "object",
     properties: {
-      draftId: {
-        type: "string",
-        description: "The ID of the draft to update",
-      },
       messageId: {
         type: "string",
-        description: "The ID of the message being replied to",
+        description: "The ID of the message to reply to",
       },
-      updates: {
+      guidance: {
         type: "string",
-        description: "Instructions for updating the draft",
+        description:
+          "Any guidance the user provided when directing you to create a draft reply",
       },
     },
-    required: ["draftId", "messageId", "updates"],
+    required: ["messageId", "guidance"],
   },
-  execute: async ({ draftId, messageId, updates }, context) => {
+  execute: async ({ messageId, guidance }, context) => {
     try {
       if (!context.googleToken) {
         throw new Error("Google token is required for this operation");
@@ -86,20 +87,9 @@ export const updateDraftReplyConfig: BaseToolConfig<
         userEmail
       );
 
-      // Get the existing draft get current content
-      const existingDraft = await gmail.users.drafts.get({
-        userId: "me",
-        id: draftId,
-      });
-      const currentBody = existingDraft.data?.message?.payload?.body?.data;
-      if (!currentBody) {
-        throw new Error("Could not find plain text body in existing draft");
-      }
-      const decodedBody = Buffer.from(currentBody, "base64").toString();
-
-      // Initialize update draft prompt if not already done
-      if (!updateDraftReplyPrompt) {
-        updateDraftReplyPrompt = await langfuse.getPrompt(
+      // Get the system message and other messages from the prompt
+      if (!draftReplyPrompt) {
+        draftReplyPrompt = await langfuse.getPrompt(
           "create-draft-reply",
           undefined,
           {
@@ -107,15 +97,14 @@ export const updateDraftReplyConfig: BaseToolConfig<
             type: "chat",
           }
         );
-        if (updateDraftReplyPrompt.type !== "chat") {
-          throw new Error("Update draft prompt is not a chat prompt");
+        if (draftReplyPrompt.type !== "chat") {
+          throw new Error("Draft reply prompt is not a chat prompt");
         }
       }
-
-      const compiledPrompt = updateDraftReplyPrompt.compile({
+      const compiledPrompt = draftReplyPrompt.compile({
         email: parsedEmail.llmFormatted,
-        currentDraft: `The current draft looks like this:\n<draft>\n${decodedBody}\n</draft>`,
-        additionalDirections: `Here are the requested updates:\n<updates>\n${updates}\n</updates>`,
+        currentDraft: "",
+        additionalDirections: guidance,
         userPreferences: `Please make my emails sound friendly. E.g., if you say "thanks" or "thank you" in the middle of an email, use an exclamation point.`,
         userFirstName: context.user.firstName ?? "",
       });
@@ -132,8 +121,6 @@ export const updateDraftReplyConfig: BaseToolConfig<
       if (otherMessages.length === 0) {
         throw new Error("No user messages found in prompt");
       }
-
-      // Generate the updated draft using AI
       const result = await generateText({
         // @ts-ignore type error here for whatever reason
         model: google("gemini-2.0-flash"),
@@ -142,49 +129,65 @@ export const updateDraftReplyConfig: BaseToolConfig<
         experimental_telemetry: {
           isEnabled: true,
           metadata: {
-            langfusePrompt: updateDraftReplyPrompt.toJSON(),
+            langfusePrompt: draftReplyPrompt.toJSON(),
             messageId,
           },
         },
       });
-
       const body = result.text;
-      const rawMessage = formatDraftReply({
-        originalMessage: messageData.data,
-        body,
+
+      // Generate draft reply content with attribution line
+      const replyAttribution = await createReplyAttribution({
+        originalMessage: originalMessage,
+      });
+
+      // Append the attribution line after the AI-generated content
+      const fullReplyBody = `${body}\n\n${replyAttribution}`;
+
+      // Format the draft reply
+      const formattedReply = formatDraftReply({
+        originalMessage,
+        body: fullReplyBody,
         userEmail,
       });
-      const draft = await gmail.users.drafts.update({
+
+      // Create the draft in gmail
+      const draft = await gmail.users.drafts.create({
         userId: "me",
-        id: draftId,
         requestBody: {
           message: {
-            raw: rawMessage,
             threadId,
+            raw: Buffer.from(formattedReply)
+              .toString("base64")
+              .replace(/\+/g, "-")
+              .replace(/\//g, "_"),
           },
         },
       });
+
+      // to keep the return of the LLM tool concise, only include the text result from the llm (i.e. body)
+      // do not include the attribution + quote from the original message
       return {
         draftId: draft.data.id!,
         body,
       };
     } catch (e) {
-      console.error("Error updating draft reply", e);
+      console.error("Error creating draft reply", e);
       throw e;
     }
   },
   messages: [
     {
       type: "request-start" as const,
-      content: "Updating draft reply...",
+      content: "Creating a draft reply...",
     },
     {
       type: "request-failed" as const,
-      content: "Failed to update draft reply. Please try again.",
+      content: "Failed to create draft reply. Please try again.",
     },
     {
       type: "request-response-delayed" as const,
-      content: "Still working on updating the draft reply...",
+      content: "Still working on creating the draft reply...",
       timingMilliseconds: 10000,
     },
   ],

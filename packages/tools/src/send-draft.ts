@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { gmailClientForToken } from "~/utils/gmail";
-import type { BaseToolConfig } from "~/utils/tools/registry";
+import { gmailClientForToken } from "./gmail";
+import type { BaseToolConfig } from "./registry";
 
 const sendDraftSchema = z.object({
   draftId: z.string().describe("The ID of the draft to send"),

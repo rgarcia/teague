@@ -1,7 +1,8 @@
-import { OauthAccessToken } from "@clerk/backend";
+import type { OauthAccessToken } from "@clerk/backend";
 import TTLCache from "@isaacs/ttlcache";
-import { OAuth2Client, TokenInfo } from "google-auth-library";
-import { clerk } from "~/utils/clerk";
+import { clerk } from "clerk-util";
+import type { TokenInfo } from "google-auth-library";
+import { OAuth2Client } from "google-auth-library";
 
 export async function tokeninfo(token: string): Promise<TokenInfo> {
   const auth = new OAuth2Client();

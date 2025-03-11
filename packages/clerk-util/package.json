@@ -1,0 +1,11 @@
+{
+  "name": "clerk-util",
+  "version": "1.0.0",
+  "main": "./src/index.ts",
+  "description": "",
+  "type": "module",
+  "dependencies": {
+    "@clerk/backend": "1.25.1",
+    "@isaacs/ttlcache": "^1.4.1"
+  }
+}

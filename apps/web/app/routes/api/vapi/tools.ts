@@ -1,20 +1,17 @@
 import { json } from "@tanstack/react-start";
 import { createAPIFileRoute } from "@tanstack/react-start/api";
 import type { Vapi } from "@vapi-ai/server-sdk";
-import { acceptInviteConfig } from "~/tools/accept-invite";
-import { archiveEmailConfig } from "~/tools/archive-email";
-import { createDraftReplyConfig } from "~/tools/create-draft-reply";
-import { deleteDraftConfig } from "~/tools/delete-draft";
-import { filterSenderConfig } from "~/tools/filter-sender";
-import { nextEmailConfig } from "~/tools/next-email";
-import { sendDraftConfig } from "~/tools/send-draft";
-import { unsubscribeConfig } from "~/tools/unsubscribe";
-import { updateDraftReplyConfig } from "~/tools/update-draft-reply";
-import { clerk, getUserIdFromClerkJwt } from "~/utils/clerk";
-import {
-  ToolRegistryManager,
-  type RequestContext,
-} from "~/utils/tools/registry";
+import { clerk, getUserIdFromClerkJwt } from "clerk-util";
+import { acceptInviteConfig } from "tools/accept-invite";
+import { archiveEmailConfig } from "tools/archive-email";
+import { createDraftReplyConfig } from "tools/create-draft-reply";
+import { deleteDraftConfig } from "tools/delete-draft";
+import { filterSenderConfig } from "tools/filter-sender";
+import { nextEmailConfig } from "tools/next-email";
+import { ToolRegistryManager, type RequestContext } from "tools/registry";
+import { sendDraftConfig } from "tools/send-draft";
+import { unsubscribeConfig } from "tools/unsubscribe";
+import { updateDraftReplyConfig } from "tools/update-draft-reply";
 
 // Create and populate the registry
 const registry = new ToolRegistryManager();

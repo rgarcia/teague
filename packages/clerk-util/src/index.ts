@@ -1,4 +1,4 @@
-import { createClerkClient, User, verifyToken } from "@clerk/backend";
+import { createClerkClient, type User, verifyToken } from "@clerk/backend";
 import TTLCache from "@isaacs/ttlcache";
 
 export const clerk = createClerkClient({

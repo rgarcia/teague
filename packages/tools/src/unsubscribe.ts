@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { archiveEmail, unsubscribeEmail } from "~/utils/gmail";
-import type { BaseToolConfig } from "~/utils/tools/registry";
+import { archiveEmail, unsubscribeEmail } from "./gmail";
+import type { BaseToolConfig } from "./registry";
 
 const unsubscribeSchema = z.object({
   messageId: z.string().describe("The ID of the message to unsubscribe from"),

@@ -1,13 +1,13 @@
-import { acceptInviteConfig } from "~/tools/accept-invite";
-import { archiveEmailConfig } from "~/tools/archive-email";
-import { createDraftReplyConfig } from "~/tools/create-draft-reply";
-import { deleteDraftConfig } from "~/tools/delete-draft";
-import { filterSenderConfig } from "~/tools/filter-sender";
-import { nextEmailConfig } from "~/tools/next-email";
-import { sendDraftConfig } from "~/tools/send-draft";
-import { unsubscribeConfig } from "~/tools/unsubscribe";
-import { updateDraftReplyConfig } from "~/tools/update-draft-reply";
+import { acceptInviteConfig } from "./accept-invite";
+import { archiveEmailConfig } from "./archive-email";
+import { createDraftReplyConfig } from "./create-draft-reply";
+import { deleteDraftConfig } from "./delete-draft";
+import { filterSenderConfig } from "./filter-sender";
+import { nextEmailConfig } from "./next-email";
 import { ToolRegistryManager } from "./registry";
+import { sendDraftConfig } from "./send-draft";
+import { unsubscribeConfig } from "./unsubscribe";
+import { updateDraftReplyConfig } from "./update-draft-reply";
 
 /**
  * A singleton instance of ToolRegistryManager with all available tools registered.

@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { archiveEmail } from "~/utils/gmail";
-import type { BaseToolConfig } from "~/utils/tools/registry";
+import { archiveEmail } from "./gmail";
+import type { BaseToolConfig } from "./registry";
 
 const archiveEmailSchema = z.object({
   messageId: z.string().describe("The ID of the message to archive"),

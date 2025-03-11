@@ -2,13 +2,13 @@ import type { ConnectionDetails } from "@/lib/livekit/types";
 import { getAuth } from "@clerk/tanstack-start/server";
 import { json } from "@tanstack/react-start";
 import { createAPIFileRoute } from "@tanstack/react-start/api";
+import { cachedGetUser } from "clerk-util";
 import {
   AccessToken,
   AccessTokenOptions,
   VideoGrant,
 } from "livekit-server-sdk";
-import { cachedGetUser } from "~/utils/clerk";
-import { cachedGoogleToken } from "~/utils/tokeninfo";
+import { cachedGoogleToken } from "tools/tokeninfo";
 
 const API_KEY = process.env.LIVEKIT_API_KEY;
 const API_SECRET = process.env.LIVEKIT_API_SECRET;

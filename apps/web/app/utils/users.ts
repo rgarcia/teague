@@ -1,8 +1,8 @@
-import { clerk } from "@/utils/clerk";
 import { getAuth } from "@clerk/tanstack-start/server";
 import TTLCache from "@isaacs/ttlcache";
 import { createServerFn } from "@tanstack/react-start";
 import { getWebRequest } from "@tanstack/react-start/server";
+import { clerk } from "clerk-util";
 import { db, eq, User, users } from "db";
 
 type GetUserInput = {

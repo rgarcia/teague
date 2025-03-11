@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { acceptInvite } from "~/utils/gcal";
-import { archiveEmail } from "~/utils/gmail";
-import type { BaseToolConfig } from "~/utils/tools/registry";
+import { acceptInvite } from "./gcal";
+import { archiveEmail } from "./gmail";
+import type { BaseToolConfig } from "./registry";
 
 const acceptInviteSchema = z.object({
   messageId: z.string().describe("The ID of the message containing the invite"),

@@ -1,4 +1,7 @@
 packages:
   - "apps/web"
-  - "packages/db"
   - "apps/livekit"
+  - "packages/db"
+  - "packages/tools"
+  - "packages/langfuse-util"
+  - "packages/clerk-util"

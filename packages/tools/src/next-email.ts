@@ -5,9 +5,9 @@ import {
   gmailClientForToken,
   parseGmailEmail,
   type FetchEmailsOutput,
-} from "~/utils/gmail";
-import { tokeninfo } from "~/utils/tokeninfo";
-import type { BaseToolConfig } from "~/utils/tools/registry";
+} from "./gmail";
+import type { BaseToolConfig } from "./registry";
+import { tokeninfo } from "./tokeninfo";
 
 // Create a cache with a 5-minute TTL
 const emailCache = new TTLCache<string, FetchEmailsOutput>({

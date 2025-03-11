@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { createFilter } from "~/utils/gmail";
-import type { BaseToolConfig } from "~/utils/tools/registry";
+import { createFilter } from "./gmail";
+import type { BaseToolConfig } from "./registry";
 
 const filterSenderSchema = z.object({
   fromEmail: z.string().describe("The email address to create a filter for"),
