@@ -103,9 +103,9 @@ const initPromise = new Promise<void>(async (resolve, reject) => {
       level: (process.env.MASTRA_LOG_LEVEL as LogLevel) || "info",
     }),
     agents: {
-      cannon: new Agent({
+      blitz: new Agent({
         //memory,
-        name: "Cannon",
+        name: "Blitz",
         instructions: systemPromptText,
         //model: openai("gpt-4o"),
         model: google("gemini-2.0-flash-001"),
@@ -207,9 +207,9 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
       //  Order of ops: instructions, ...context, ...memories, ...messages
       await initPromise;
       // when memory is enabled you only need to send the last coreUserMessage and the rest are recalled from memory according to the lastMessages setting
-      // const res = await mastra!.getAgent("cannon").stream([coreUserMessage], {
+      // const res = await mastra!.getAgent("blitz").stream([coreUserMessage], {
       // when not using memory you need to pass all coreMessages via context
-      const res = await mastra!.getAgent("cannon").stream([], {
+      const res = await mastra!.getAgent("blitz").stream([], {
         context: coreMessages,
         toolsets: { "this-name-doesnt-matter": tools },
         resourceId: user.id,

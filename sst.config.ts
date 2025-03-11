@@ -154,6 +154,18 @@ export default $config({
         value: "8080",
       },
       {
+        name: "LIVEKIT_URL",
+        value: secrets.livekit.url.value,
+      },
+      {
+        name: "LIVEKIT_API_KEY",
+        value: secrets.livekit.apiKey.value,
+      },
+      {
+        name: "LIVEKIT_API_SECRET",
+        value: secrets.livekit.apiSecret.value,
+      },
+      {
         name: "NODE_ENV",
         value: $app.stage === Stage.Prod ? "production" : "development",
       },
@@ -211,6 +223,10 @@ export default $config({
       {
         name: "OPENAI_API_KEY",
         value: secrets.openai.apiKey.value,
+      },
+      {
+        name: "NODE_ENV",
+        value: $app.stage === Stage.Prod ? "production" : "development",
       },
     ];
     const livekit = new railway.Service(

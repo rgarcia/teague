@@ -17,7 +17,7 @@ export const Overview = () => {
         <p className="flex flex-row justify-center gap-4 items-center">
           <Zap />
         </p>
-        <p>Welcome to Cannon. Start chatting with your email below!</p>
+        <p>Welcome to Blitz. Start chatting with your email below!</p>
       </div>
     </motion.div>
   );

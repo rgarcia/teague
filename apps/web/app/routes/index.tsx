@@ -36,6 +36,14 @@ function Home() {
           >
             Chat
           </Link>
+          <Link
+            to="/speak"
+            activeProps={{
+              className: "font-bold",
+            }}
+          >
+            Speak
+          </Link>
         </SignedIn>
         <div className="ml-auto">
           <SignedIn>

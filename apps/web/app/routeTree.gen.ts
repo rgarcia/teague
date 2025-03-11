@@ -19,6 +19,7 @@ import { Route as AuthedChatImport } from './routes/_authed/_chat'
 import { Route as AuthedPostsIndexImport } from './routes/_authed/posts.index'
 import { Route as AuthedProfileSplatImport } from './routes/_authed/profile.$'
 import { Route as AuthedPostsPostIdImport } from './routes/_authed/posts.$postId'
+import { Route as AuthedChatSpeakIndexImport } from './routes/_authed/_chat/speak.index'
 import { Route as AuthedChatChatIndexImport } from './routes/_authed/_chat/chat.index'
 import { Route as AuthedChatChatIdImport } from './routes/_authed/_chat/chat.$id'
 
@@ -68,6 +69,12 @@ const AuthedPostsPostIdRoute = AuthedPostsPostIdImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => AuthedPostsRoute,
+} as any)
+
+const AuthedChatSpeakIndexRoute = AuthedChatSpeakIndexImport.update({
+  id: '/speak/',
+  path: '/speak/',
+  getParentRoute: () => AuthedChatRoute,
 } as any)
 
 const AuthedChatChatIndexRoute = AuthedChatChatIndexImport.update({
@@ -156,6 +163,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedChatChatIndexImport
       parentRoute: typeof AuthedChatImport
     }
+    '/_authed/_chat/speak/': {
+      id: '/_authed/_chat/speak/'
+      path: '/speak'
+      fullPath: '/speak'
+      preLoaderRoute: typeof AuthedChatSpeakIndexImport
+      parentRoute: typeof AuthedChatImport
+    }
   }
 }
 
@@ -164,11 +178,13 @@ declare module '@tanstack/react-router' {
 interface AuthedChatRouteChildren {
   AuthedChatChatIdRoute: typeof AuthedChatChatIdRoute
   AuthedChatChatIndexRoute: typeof AuthedChatChatIndexRoute
+  AuthedChatSpeakIndexRoute: typeof AuthedChatSpeakIndexRoute
 }
 
 const AuthedChatRouteChildren: AuthedChatRouteChildren = {
   AuthedChatChatIdRoute: AuthedChatChatIdRoute,
   AuthedChatChatIndexRoute: AuthedChatChatIndexRoute,
+  AuthedChatSpeakIndexRoute: AuthedChatSpeakIndexRoute,
 }
 
 const AuthedChatRouteWithChildren = AuthedChatRoute._addFileChildren(
@@ -214,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/posts/': typeof AuthedPostsIndexRoute
   '/chat/$id': typeof AuthedChatChatIdRoute
   '/chat': typeof AuthedChatChatIndexRoute
+  '/speak': typeof AuthedChatSpeakIndexRoute
 }
 
 export interface FileRoutesByTo {
@@ -225,6 +242,7 @@ export interface FileRoutesByTo {
   '/posts': typeof AuthedPostsIndexRoute
   '/chat/$id': typeof AuthedChatChatIdRoute
   '/chat': typeof AuthedChatChatIndexRoute
+  '/speak': typeof AuthedChatSpeakIndexRoute
 }
 
 export interface FileRoutesById {
@@ -239,6 +257,7 @@ export interface FileRoutesById {
   '/_authed/posts/': typeof AuthedPostsIndexRoute
   '/_authed/_chat/chat/$id': typeof AuthedChatChatIdRoute
   '/_authed/_chat/chat/': typeof AuthedChatChatIndexRoute
+  '/_authed/_chat/speak/': typeof AuthedChatSpeakIndexRoute
 }
 
 export interface FileRouteTypes {
@@ -253,6 +272,7 @@ export interface FileRouteTypes {
     | '/posts/'
     | '/chat/$id'
     | '/chat'
+    | '/speak'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -263,6 +283,7 @@ export interface FileRouteTypes {
     | '/posts'
     | '/chat/$id'
     | '/chat'
+    | '/speak'
   id:
     | '__root__'
     | '/'
@@ -275,6 +296,7 @@ export interface FileRouteTypes {
     | '/_authed/posts/'
     | '/_authed/_chat/chat/$id'
     | '/_authed/_chat/chat/'
+    | '/_authed/_chat/speak/'
   fileRoutesById: FileRoutesById
 }
 
@@ -324,7 +346,8 @@ export const routeTree = rootRoute
       "parent": "/_authed",
       "children": [
         "/_authed/_chat/chat/$id",
-        "/_authed/_chat/chat/"
+        "/_authed/_chat/chat/",
+        "/_authed/_chat/speak/"
       ]
     },
     "/_authed/posts": {
@@ -353,6 +376,10 @@ export const routeTree = rootRoute
     },
     "/_authed/_chat/chat/": {
       "filePath": "_authed/_chat/chat.index.tsx",
+      "parent": "/_authed/_chat"
+    },
+    "/_authed/_chat/speak/": {
+      "filePath": "_authed/_chat/speak.index.tsx",
       "parent": "/_authed/_chat"
     }
   }
