@@ -33,6 +33,11 @@ export default defineAgent({
     await ctx.connect(undefined, AutoSubscribe.AUDIO_ONLY);
     console.log("waiting for participant");
     const participant = await ctx.waitForParticipant();
+    console.log(
+      "DEBUG: participant attributes, metadata:",
+      participant.attributes,
+      participant.metadata
+    );
     console.log(`starting assistant example agent for ${participant.identity}`);
 
     const fncCtx: llm.FunctionContext = {

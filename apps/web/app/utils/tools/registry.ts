@@ -1,10 +1,13 @@
-import { User } from "@clerk/backend";
 import type { Vapi } from "@vapi-ai/server-sdk";
 import { z } from "zod";
 
 export interface RequestContext {
   googleToken: string;
-  user: User;
+  user: {
+    firstName: string;
+    lastName: string;
+    clerkId: string;
+  };
   // Add other context properties as needed
 }
 

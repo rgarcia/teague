@@ -7,11 +7,18 @@ import {
   LiveKitRoom,
   RoomAudioRenderer,
   VoiceAssistantControlBar,
+  useMaybeRoomContext,
   useVoiceAssistant,
 } from "@livekit/components-react";
 import { useKrispNoiseFilter } from "@livekit/components-react/krisp";
 import { AnimatePresence, motion } from "framer-motion";
-import { MediaDeviceFailure } from "livekit-client";
+import {
+  MediaDeviceFailure,
+  Participant,
+  RoomEvent,
+  TrackPublication,
+  TranscriptionSegment,
+} from "livekit-client";
 import { useCallback, useEffect, useState } from "react";
 import type { ConnectionDetails } from "@/lib/livekit/types";
 import { X } from "lucide-react";
@@ -91,12 +98,43 @@ function RouteComponent() {
 }
 
 function Transcriptions() {
-  const { agentTranscriptions } = useVoiceAssistant();
+  const room = useMaybeRoomContext();
+  const [transcriptions, setTranscriptions] = useState<{
+    [id: string]: TranscriptionSegment;
+  }>({});
+
+  useEffect(() => {
+    if (!room) {
+      return;
+    }
+
+    const updateTranscriptions = (
+      segments: TranscriptionSegment[],
+      participant?: Participant,
+      publication?: TrackPublication
+    ) => {
+      setTranscriptions((prev) => {
+        const newTranscriptions = { ...prev };
+        for (const segment of segments) {
+          newTranscriptions[segment.id] = segment;
+        }
+        return newTranscriptions;
+      });
+    };
+
+    room.on(RoomEvent.TranscriptionReceived, updateTranscriptions);
+    return () => {
+      room.off(RoomEvent.TranscriptionReceived, updateTranscriptions);
+    };
+  }, [room]);
+
   return (
-    <ul className="mt-4 mx-auto">
-      {agentTranscriptions.map((transcription, index) => (
-        <li key={index}>{transcription.text}</li>
-      ))}
+    <ul>
+      {Object.values(transcriptions)
+        .sort((a, b) => a.firstReceivedTime - b.firstReceivedTime)
+        .map((segment) => (
+          <li key={segment.id}>{segment.text}</li>
+        ))}
     </ul>
   );
 }

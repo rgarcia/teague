@@ -1,10 +1,14 @@
 import type { ConnectionDetails } from "@/lib/livekit/types";
+import { getAuth } from "@clerk/tanstack-start/server";
+import { json } from "@tanstack/react-start";
 import { createAPIFileRoute } from "@tanstack/react-start/api";
 import {
   AccessToken,
   AccessTokenOptions,
   VideoGrant,
 } from "livekit-server-sdk";
+import { cachedGetUser } from "~/utils/clerk";
+import { cachedGoogleToken } from "~/utils/tokeninfo";
 
 const API_KEY = process.env.LIVEKIT_API_KEY;
 const API_SECRET = process.env.LIVEKIT_API_SECRET;
@@ -29,8 +33,26 @@ export const APIRoute = createAPIFileRoute("/api/livekit/connection-details")({
       const roomName = `voice_assistant_room_${Math.floor(
         Math.random() * 10_000
       )}`;
+      const { userId: clerkUserId } = await getAuth(request);
+      if (!clerkUserId) {
+        return json({ error: "Unauthorized" }, { status: 401 });
+      }
+      const [clerkUser, { token: googleToken }] = await Promise.all([
+        cachedGetUser(clerkUserId),
+        cachedGoogleToken(clerkUserId),
+      ]);
       const participantToken = await createParticipantToken(
-        { identity: participantIdentity },
+        {
+          identity: participantIdentity,
+          attributes: {
+            googleToken,
+            user: JSON.stringify({
+              firstName: clerkUser.firstName ?? "",
+              lastName: clerkUser.lastName ?? "",
+              clerkId: clerkUserId,
+            }),
+          },
+        },
         roomName
       );
       const data: ConnectionDetails = {

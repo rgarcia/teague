@@ -78,7 +78,11 @@ export const APIRoute = createAPIFileRoute("/api/vapi/tools")({
       const results: Vapi.ToolCallResult[] = [];
       const context: RequestContext = {
         googleToken,
-        user,
+        user: {
+          firstName: user.firstName ?? "",
+          lastName: user.lastName ?? "",
+          clerkId: userId,
+        },
       };
       for (const toolCall of toolCalls) {
         if (toolCall.type !== "function") {

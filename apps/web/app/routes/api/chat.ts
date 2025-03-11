@@ -148,7 +148,11 @@ export const APIRoute = createAPIFileRoute("/api/chat")({
                 try {
                   const result = await t.execute(params, {
                     googleToken,
-                    user: clerkUser,
+                    user: {
+                      firstName: clerkUser.firstName ?? "",
+                      lastName: clerkUser.lastName ?? "",
+                      clerkId: clerkUserId,
+                    },
                   });
                   return result;
                 } catch (error) {
