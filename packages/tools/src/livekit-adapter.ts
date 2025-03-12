@@ -12,6 +12,7 @@ export function createLivekitToolDefition<TParams extends z.ZodType, TResult>(
       parameters: tool.parameters,
       description: tool.description,
       execute: async (params) => {
+        console.log("DEBUG: execute", tool.name, params);
         const res = await tool.execute(params, context);
         return JSON.stringify(res);
       },

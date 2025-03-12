@@ -13,6 +13,7 @@ import * as elevenlabs from "@livekit/agents-plugin-elevenlabs";
 import * as livekit from "@livekit/agents-plugin-livekit";
 import * as openai from "@livekit/agents-plugin-openai";
 import * as silero from "@livekit/agents-plugin-silero";
+import { langfuse } from "langfuse-util";
 import { fileURLToPath } from "node:url";
 import toolRegistry from "tools/all-tools";
 import {
@@ -28,23 +29,27 @@ export default defineAgent({
   },
   entry: async (ctx: JobContext) => {
     const vad = ctx.proc.userData.vad! as silero.VAD;
+    const systemPrompt = await langfuse.getPrompt("system-prompt", undefined, {
+      label: "production",
+      type: "chat",
+    });
+    if (systemPrompt.type !== "chat") {
+      throw new Error("System prompt is not a chat prompt");
+    }
+    const systemPromptText = systemPrompt
+      .compile()
+      .find((p) => p.role === "system")?.content;
+    if (!systemPromptText) {
+      throw new Error("Could not find system prompt");
+    }
+
     const initialContext = new llm.ChatContext().append({
       role: llm.ChatRole.SYSTEM,
-      text:
-        "You are a voice assistant created by LiveKit. Your interface with users will be voice. " +
-        "You should use short and concise responses, and avoiding usage of unpronounceable " +
-        "punctuation.",
+      text: systemPromptText,
     });
 
     await ctx.connect(undefined, AutoSubscribe.AUDIO_ONLY);
-    console.log("waiting for participant");
     const participant = await ctx.waitForParticipant();
-    console.log(
-      "DEBUG: participant attributes, metadata:",
-      participant.attributes,
-      participant.metadata
-    );
-    console.log(`starting assistant example agent for ${participant.identity}`);
     const toolDefs = Object.fromEntries(
       registeredTools.map((tool) => {
         return createLivekitToolDefition(
