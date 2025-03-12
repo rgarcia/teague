@@ -41,6 +41,7 @@ export default $config({
       clerk: {
         publishableKey: new sst.Secret("ClerkPublishableKey"),
         secretKey: new sst.Secret("ClerkSecretKey"),
+        jwtKey: new sst.Secret("ClerkJwtKey"),
       },
       langfuse: {
         secretKey: new sst.Secret("LangfuseSecretKey"),
@@ -88,6 +89,10 @@ export default $config({
       {
         name: "CLERK_PUBLISHABLE_KEY",
         value: secrets.clerk.publishableKey.value,
+      },
+      {
+        name: "CLERK_JWT_KEY",
+        value: secrets.clerk.jwtKey.value,
       },
       {
         name: "VITE_CLERK_PUBLISHABLE_KEY",
@@ -225,6 +230,34 @@ export default $config({
         value: secrets.openai.apiKey.value,
       },
       {
+        name: "GOOGLE_GENERATIVE_AI_API_KEY",
+        value: secrets.googleGenerativeAI.apiKey.value,
+      },
+      {
+        name: "CLERK_SECRET_KEY",
+        value: secrets.clerk.secretKey.value,
+      },
+      {
+        name: "CLERK_PUBLISHABLE_KEY",
+        value: secrets.clerk.publishableKey.value,
+      },
+      {
+        name: "CLERK_JWT_KEY",
+        value: secrets.clerk.jwtKey.value,
+      },
+      {
+        name: "LANGFUSE_SECRET_KEY",
+        value: secrets.langfuse.secretKey.value,
+      },
+      {
+        name: "LANGFUSE_PUBLIC_KEY",
+        value: "pk-lf-e8c1add9-93a5-458d-96cc-44de551fcba1",
+      },
+      {
+        name: "LANGFUSE_BASE_URL",
+        value: "https://us.cloud.langfuse.com",
+      },
+      {
         name: "NODE_ENV",
         value: $app.stage === Stage.Prod ? "production" : "development",
       },
@@ -273,6 +306,6 @@ export default $config({
       comment: "Set via SST",
     });
 
-    return { web, envVars, dns };
+    return { web, livekit, dns };
   },
 });

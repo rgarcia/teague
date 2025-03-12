@@ -6,10 +6,10 @@ import {
 import { mkdirSync, writeFileSync } from "fs";
 import { Langfuse } from "langfuse";
 import path from "path";
-import toolRegistry from "~/utils/tools/all-tools";
-import { createVapiToolDefinition } from "~/utils/tools/vapi-adapter";
+import toolRegistry from "tools/all-tools";
+import { createVapiToolDefinition } from "tools/vapi-adapter";
 
-const client = new VapiClient({ token: process.env.VAPI_API_KEY });
+const client = new VapiClient({ token: process.env.VAPI_API_KEY! });
 const langfuse = new Langfuse({
   baseUrl: process.env.LANGFUSE_BASE_URL,
   secretKey: process.env.LANGFUSE_SECRET_KEY,

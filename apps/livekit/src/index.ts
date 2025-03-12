@@ -14,7 +14,13 @@ import * as livekit from "@livekit/agents-plugin-livekit";
 import * as openai from "@livekit/agents-plugin-openai";
 import * as silero from "@livekit/agents-plugin-silero";
 import { fileURLToPath } from "node:url";
-import { z } from "zod";
+import toolRegistry from "tools/all-tools";
+import {
+  createLivekitToolDefition,
+  requestContextFromAttributes,
+} from "tools/livekit-adapter";
+
+const registeredTools = toolRegistry.getAllTools();
 
 export default defineAgent({
   prewarm: async (proc: JobProcess) => {
@@ -39,26 +45,15 @@ export default defineAgent({
       participant.metadata
     );
     console.log(`starting assistant example agent for ${participant.identity}`);
-
-    const fncCtx: llm.FunctionContext = {
-      weather: {
-        description: "Get the weather in a location",
-        parameters: z.object({
-          location: z.string().describe("The location to get the weather for"),
-        }),
-        execute: async ({ location }) => {
-          console.debug(`executing weather function for ${location}`);
-          const response = await fetch(
-            `https://wttr.in/${location}?format=%C+%t`
-          );
-          if (!response.ok) {
-            throw new Error(`Weather API returned status: ${response.status}`);
-          }
-          const weather = await response.text();
-          return `The weather in ${location} right now is ${weather}.`;
-        },
-      },
-    };
+    const toolDefs = Object.fromEntries(
+      registeredTools.map((tool) => {
+        return createLivekitToolDefition(
+          tool,
+          requestContextFromAttributes(participant.attributes)
+        );
+      })
+    );
+    const fncCtx: llm.FunctionContext = toolDefs;
 
     const agent = new pipeline.VoicePipelineAgent(
       vad,
@@ -70,13 +65,9 @@ export default defineAgent({
         chatCtx: initialContext,
         fncCtx,
         turnDetector: new livekit.turnDetector.EOUModel(),
-        beforeLLMCallback: (prompt) => {
-          console.log("DEBUG: beforeLLMCallback", prompt);
-        },
       }
     );
     agent.start(ctx.room, participant);
-
     await agent.say("Hey, how can I help you today", true);
   },
 });

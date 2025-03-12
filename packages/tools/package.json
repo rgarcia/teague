@@ -12,6 +12,7 @@
     "@googleapis/calendar": "^9.8.0",
     "@googleapis/gmail": "^12.0.0",
     "@isaacs/ttlcache": "^1.4.1",
+    "@livekit/agents": "^0.7.0",
     "@vapi-ai/server-sdk": "^0.5.0",
     "ai": "^4.1.54",
     "clerk-util": "workspace:*",

@@ -6,8 +6,8 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "start-dev": "dotenv -e .env -- node dist/index.js dev",
-    "start": "dotenv -e .env -- node dist/index.js start"
+    "start-dev": "dotenv -e .env -- tsx src/index.ts dev",
+    "start": "tsx src/index.ts start"
   },
   "dependencies": {
     "@livekit/agents": "^0.7.0",
@@ -16,6 +16,8 @@
     "@livekit/agents-plugin-livekit": "^0.1.0",
     "@livekit/agents-plugin-openai": "^0.8.2",
     "@livekit/agents-plugin-silero": "^0.5.4",
+    "tools": "workspace:*",
+    "tsx": "^4.19.3",
     "zod": "^3.24.2"
   },
   "keywords": [],

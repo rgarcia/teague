@@ -15,6 +15,5 @@ RUN pnpm deploy --filter=livekit --prod --force-legacy-deploy /prod/livekit
 
 FROM base AS livekit
 COPY --from=build /prod/livekit /prod/livekit
-COPY --from=build /usr/src/app/apps/livekit/dist /prod/livekit/dist
 WORKDIR /prod/livekit
-CMD [ "node", "dist/index.js", "dev"]
+CMD [ "pnpm", "run", "start"]
