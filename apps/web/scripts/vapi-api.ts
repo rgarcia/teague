@@ -78,11 +78,11 @@ async function updateAssistant(toolIds: string[]) {
 
   const assistantSpec = {
     model: {
-      // provider: "openai",
-      // model: "gpt-4o",
-      provider: "google" as const,
+      provider: "openai" as const,
+      model: "gpt-4o",
+      // provider: "google" as const,
       // @ts-ignore
-      model: "gemini-2.0-flash",
+      //model: "gemini-2.0-flash",
       temperature: 0.7,
       messages: [
         {
@@ -94,11 +94,12 @@ async function updateAssistant(toolIds: string[]) {
           content: "Let's go through my inbox.",
         },
       ],
+      // note: us-west-2 is where Vapi is deployed
       toolIds: toolIds,
     },
     startSpeakingPlan: {
       smartEndpointingEnabled: true,
-      waitSeconds: 0.8,
+      waitSeconds: 0.6,
     },
     backgroundSound: "off",
     stopSpeakingPlan: {
@@ -118,7 +119,7 @@ async function updateAssistant(toolIds: string[]) {
       provider: "deepgram" as const,
       language: "en-US" as const,
       model: "nova-3-general" as DeepgramTranscriberModel,
-      smartFormat: false,
+      smartFormat: true,
     },
     clientMessages: [
       "conversation-update",
@@ -147,7 +148,7 @@ async function updateAssistant(toolIds: string[]) {
       "transfer-destination-request",
       "user-interrupted",
     ],
-    endCallPhrases: ["goodbye"],
+    //endCallPhrases: ["goodbye"],
     silenceTimeoutSeconds: 60,
   } as UpdateAssistantDto;
 
