@@ -1,11 +1,29 @@
 {
   "name": "clerk-util",
   "version": "1.0.0",
-  "main": "./src/index.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "import": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "require": {
+      "types": "./dist/index.d.cts",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/*.ts --format cjs,esm --dts --clean --sourcemap --out-dir dist"
+  },
   "description": "",
   "type": "module",
   "dependencies": {
     "@clerk/backend": "1.25.1",
     "@isaacs/ttlcache": "^1.4.1"
+  },
+  "devDependencies": {
+    "tsup": "^8.4.0"
   }
 }

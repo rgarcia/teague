@@ -1,9 +1,24 @@
 {
   "name": "langfuse-util",
   "version": "1.0.0",
-  "main": "./src/index.ts",
   "description": "",
   "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "import": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "require": {
+      "types": "./dist/index.d.cts",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/*.ts --format cjs,esm --dts --clean --sourcemap --out-dir dist"
+  },
   "dependencies": {
     "@opentelemetry/auto-instrumentations-node": "^0.56.1",
     "@opentelemetry/exporter-trace-otlp-http": "^0.57.2",
@@ -12,5 +27,8 @@
     "@opentelemetry/semantic-conventions": "^1.30.0",
     "langfuse": "^3.36.0",
     "langfuse-vercel": "^3.36.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.4.0"
   }
 }

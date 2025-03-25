@@ -1,7 +1,8 @@
 import { myProvider } from "@/lib/ai/models";
+import { db } from "@/lib/db";
 import { createServerFn } from "@tanstack/react-start";
 import { generateText, Message } from "ai";
-import { Chat, chats, db, desc, eq, messages, votes } from "db";
+import { Chat, chats, desc, eq, messages, votes } from "db";
 
 type GetChatInput = {
   chatId: string;

@@ -1,9 +1,10 @@
+import { db } from "@/lib/db";
 import { getAuth } from "@clerk/tanstack-start/server";
 import TTLCache from "@isaacs/ttlcache";
 import { createServerFn } from "@tanstack/react-start";
 import { getWebRequest } from "@tanstack/react-start/server";
 import { clerk } from "clerk-util";
-import { db, eq, User, users } from "db";
+import { eq, User, users } from "db";
 
 type GetUserInput = {
   clerkUserId: string;

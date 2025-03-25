@@ -1,11 +1,15 @@
+import type { Config } from "@planetscale/database";
+import type { PlanetScaleDatabase } from "drizzle-orm/planetscale-serverless";
 import { drizzle } from "drizzle-orm/planetscale-serverless";
 import * as schema from "./schema";
 
-export const db = drizzle({
-  schema,
-  connection: {
-    host: process.env["DATABASE_HOST"],
-    username: process.env["DATABASE_USERNAME"],
-    password: process.env["DATABASE_PASSWORD"],
-  },
-});
+export function createDb(config: Config): PlanetScaleDatabase<typeof schema> {
+  return drizzle({
+    schema,
+    connection: {
+      host: config.host,
+      username: config.username,
+      password: config.password,
+    },
+  });
+}

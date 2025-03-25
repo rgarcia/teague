@@ -1,6 +1,7 @@
 packages:
   - "apps/web"
   - "apps/livekit"
+  - "apps/mastra"
   - "packages/db"
   - "packages/tools"
   - "packages/langfuse-util"

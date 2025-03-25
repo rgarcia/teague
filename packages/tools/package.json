@@ -1,11 +1,96 @@
 {
   "name": "tools",
   "version": "1.0.0",
-  "exports": {
-    "./*": "./src/*.ts"
-  },
   "description": "",
   "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "require": "./dist/index.cjs"
+      }
+    },
+    "./all-tools": {
+      "import": {
+        "types": "./dist/all-tools.d.ts",
+        "import": "./dist/all-tools.js"
+      },
+      "require": {
+        "types": "./dist/all-tools.d.cts",
+        "require": "./dist/all-tools.cjs"
+      }
+    },
+    "./tokeninfo": {
+      "import": {
+        "types": "./dist/tokeninfo.d.ts",
+        "import": "./dist/tokeninfo.js"
+      },
+      "require": {
+        "types": "./dist/tokeninfo.d.cts",
+        "require": "./dist/tokeninfo.cjs"
+      }
+    },
+    "./registry": {
+      "import": {
+        "types": "./dist/registry.d.ts",
+        "import": "./dist/registry.js"
+      },
+      "require": {
+        "types": "./dist/registry.d.cts",
+        "require": "./dist/registry.cjs"
+      }
+    },
+    "./gcal": {
+      "import": {
+        "types": "./dist/gcal.d.ts",
+        "import": "./dist/gcal.js"
+      },
+      "require": {
+        "types": "./dist/gcal.d.cts",
+        "require": "./dist/gcal.cjs"
+      }
+    },
+    "./gmail": {
+      "import": {
+        "types": "./dist/gmail.d.ts",
+        "import": "./dist/gmail.js"
+      },
+      "require": {
+        "types": "./dist/gmail.d.cts",
+        "require": "./dist/gmail.cjs"
+      }
+    },
+    "./livekit-adapter": {
+      "import": {
+        "types": "./dist/livekit-adapter.d.ts",
+        "import": "./dist/livekit-adapter.js"
+      },
+      "require": {
+        "types": "./dist/livekit-adapter.d.cts",
+        "require": "./dist/livekit-adapter.cjs"
+      }
+    },
+    "./vapi-adapter": {
+      "import": {
+        "types": "./dist/vapi-adapter.d.ts",
+        "import": "./dist/vapi-adapter.js"
+      },
+      "require": {
+        "types": "./dist/vapi-adapter.d.cts",
+        "require": "./dist/vapi-adapter.cjs"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup src/*.ts --format cjs,esm --dts --clean --sourcemap --out-dir dist"
+  },
   "dependencies": {
     "@ai-sdk/google": "^1.2.1",
     "@clerk/backend": "1.25.5",
@@ -23,6 +108,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@types/turndown": "^5.0.5"
+    "@types/turndown": "^5.0.5",
+    "tsup": "^8.4.0"
   }
 }
