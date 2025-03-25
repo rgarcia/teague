@@ -10,8 +10,7 @@ COPY . /usr/src/app
 WORKDIR /usr/src/app
 # see https://docs.railway.com/guides/dockerfiles#cache-mounts
 RUN --mount=type=cache,id=s/01cbe423-33b0-4775-b082-1e0830896cd4-pnpm,target=/pnpm/store pnpm install --frozen-lockfile
-RUN pnpm run --filter="./packages/*" -r build
-RUN pnpm run --filter=web -r build
+RUN pnpm run --filter=web... -r build
 RUN pnpm deploy --filter=web --prod --force-legacy-deploy /prod/web
 
 FROM base AS web
